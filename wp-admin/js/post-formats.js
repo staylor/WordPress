@@ -1,7 +1,7 @@
 window.wp = window.wp || {};
 
 (function($) {
-	var container, mediaFrame, lastMimeType, mediaPreview,
+	var container, mediaFrame, lastMimeType, mediaPreview, insertMediaButton,
 		noUIFormats = ['standard', 'chat', 'status', 'aside', 'gallery'],
 		$container = $( '.post-formats-fields' ),
 		$screenIcon = $( '.icon32' );
@@ -59,10 +59,17 @@ window.wp = window.wp || {};
 			}
 		}
 
+		// If gallery, force it to open to gallery state
+		if ( 'gallery' === format )
+			insertMediaButton.addClass( 'gallery' );
+		else
+			insertMediaButton.removeClass( 'gallery' );
+
 		postFormats.currentPostFormat = format;
 	}
 
-	$(function(){
+	$(function() {
+		insertMediaButton = $( '#insert-media-button' );
 
 		$('.post-format-change a').click(function() {
 			$('.post-formats-fields, .post-format-change').slideUp();
