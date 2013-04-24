@@ -179,6 +179,8 @@ if ( post_type_supports( $post_type, 'post-formats' ) && apply_filters( 'enable_
 		)
 	);
 
+	$all_post_formats = apply_filters( 'all_post_formats', $all_post_formats );
+
 	foreach ( $all_post_formats as $slug => $attr ) {
 		$class = '';
 		if ( $post_format == $slug ) {
