@@ -10,7 +10,7 @@ tools:
     #         standard: "WordPress" 
     # php_cpd: true
     php_hhvm: 
-		filter:
+        filter:
 		    excluded_paths:['src/wp-admin/includes/class-ftp*', 'src/wp-admin/includes/class-pclzip.php', 'src/wp-content/*', 'src/wp-includes/ID3/*', 'src/wp-includes/SimplePie/*', 'src/wp-includes/Text/*', 'src/wp-includes/atomlib.php', 'src/wp-includes/class-IXR.php', 'src/wp-includes/class-json.php', 'src/wp-includes/class-phpass.php', 'src/wp-includes/class-phpmailer.php', 'src/wp-includes/class-pop3.php', 'src/wp-includes/class-smtp.php', 'src/wp-includes/class-snoopy.php', 'src/wp-includes/kses.php', 'src/wp-includes/rss.php']
     # php_mess_detector: true
     # php_pdepend: true
