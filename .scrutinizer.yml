@@ -18,5 +18,18 @@ filter:
         - 'src/wp-includes/class-smtp.php'
         - 'src/wp-includes/class-snoopy.php'
         - 'src/wp-includes/kses.php'
-        - 'src/wp-includes/rss.php'
+        - 'src/wp-includes/rss.php'    
+    
+tools:
+    php_changetracking: true 
+    php_sim:
+       min_mass: 30
+    php_code_sniffer:
+        config:
+            standard: "WordPress" 
+    php_cpd: true
+    php_hhvm: true
+    php_mess_detector: true
+    php_pdepend: true
+    php_analyzer: true          
     
