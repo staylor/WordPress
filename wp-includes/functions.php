@@ -1921,7 +1921,7 @@ function wp_ext2type( $ext ) {
 		'image'       => array( 'jpg', 'jpeg', 'jpe',  'gif',  'png',  'bmp',   'tif',  'tiff', 'ico' ),
 		'audio'       => array( 'aac', 'ac3',  'aif',  'aiff', 'm3a',  'm4a',   'm4b',  'mka',  'mp1',  'mp2',  'mp3', 'ogg', 'oga', 'ram', 'wav', 'wma' ),
 		'video'       => array( 'asf', 'avi',  'divx', 'dv',   'flv',  'm4v',   'mkv',  'mov',  'mp4',  'mpeg', 'mpg', 'mpv', 'ogm', 'ogv', 'qt',  'rm', 'vob', 'wmv' ),
-		'document'    => array( 'doc', 'docx', 'docm', 'dotm', 'odt',  'pages', 'pdf',  'rtf',  'wp',   'wpd' ),
+		'document'    => array( 'doc', 'docx', 'docm', 'dotm', 'odt',  'pages', 'pdf',  'xps',  'oxps', 'rtf',  'wp',   'wpd' ),
 		'spreadsheet' => array( 'numbers',     'ods',  'xls',  'xlsx', 'xlsm',  'xlsb' ),
 		'interactive' => array( 'swf', 'key',  'ppt',  'pptx', 'pptm', 'pps',   'ppsx', 'ppsm', 'sldx', 'sldm', 'odp' ),
 		'text'        => array( 'asc', 'csv',  'tsv',  'txt' ),
@@ -1987,11 +1987,13 @@ function wp_check_filetype_and_ext( $file, $filename, $mimes = null ) {
 
 	// Do basic extension validation and MIME mapping
 	$wp_filetype = wp_check_filetype( $filename, $mimes );
-	extract( $wp_filetype );
+	$ext = $wp_filetype['ext'];
+	$type = $wp_filetype['type'];
 
 	// We can't do any further validation without a file to work with
-	if ( ! file_exists( $file ) )
+	if ( ! file_exists( $file ) ) {
 		return compact( 'ext', 'type', 'proper_filename' );
+	}
 
 	// We're able to validate images using GD
 	if ( $type && 0 === strpos( $type, 'image/' ) && function_exists('getimagesize') ) {
@@ -2023,12 +2025,13 @@ function wp_check_filetype_and_ext( $file, $filename, $mimes = null ) {
 				$filename_parts[] = $mime_to_ext[ $imgstats['mime'] ];
 				$new_filename = implode( '.', $filename_parts );
 
-				if ( $new_filename != $filename )
+				if ( $new_filename != $filename ) {
 					$proper_filename = $new_filename; // Mark that it changed
-
+				}
 				// Redefine the extension / MIME
 				$wp_filetype = wp_check_filetype( $new_filename, $mimes );
-				extract( $wp_filetype );
+				$ext = $wp_filetype['ext'];
+				$type = $wp_filetype['type'];
 			}
 		}
 	}
@@ -2147,6 +2150,8 @@ function wp_get_mime_types() {
 	'sldx' => 'application/vnd.openxmlformats-officedocument.presentationml.slide',
 	'sldm' => 'application/vnd.ms-powerpoint.slide.macroEnabled.12',
 	'onetoc|onetoc2|onetmp|onepkg' => 'application/onenote',
+	'oxps' => 'application/oxps',
+	'xps' => 'application/vnd.ms-xpsdocument',
 	// OpenOffice formats
 	'odt' => 'application/vnd.oasis.opendocument.text',
 	'odp' => 'application/vnd.oasis.opendocument.presentation',

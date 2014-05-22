@@ -186,24 +186,14 @@ function wp_print_media_templates() {
 					do_action( 'post-plupload-upload-ui' );
 				}
 
-				$upload_size_unit = $max_upload_size = wp_max_upload_size();
-				$byte_sizes = array( 'KB', 'MB', 'GB' );
-
-				for ( $u = -1; $upload_size_unit > 1024 && $u < count( $byte_sizes ) - 1; $u++ ) {
-					$upload_size_unit /= 1024;
+				$max_upload_size = wp_max_upload_size();
+				if ( ! $max_upload_size ) {
+					$max_upload_size = 0;
 				}
-
-				if ( $u < 0 ) {
-					$upload_size_unit = 0;
-					$u = 0;
-				} else {
-					$upload_size_unit = (int) $upload_size_unit;
-				}
-
 				?>
 
 				<p class="max-upload-size"><?php
-					printf( __( 'Maximum upload file size: %d%s.' ), esc_html($upload_size_unit), esc_html($byte_sizes[$u]) );
+					printf( __( 'Maximum upload file size: %s.' ), esc_html( size_format( $max_upload_size ) ) );
 				?></p>
 
 				<# if ( data.suggestedWidth && data.suggestedHeight ) { #>
@@ -295,7 +285,7 @@ function wp_print_media_templates() {
 			</span>
 		</h3>
 		<div class="attachment-info">
-			<div class="thumbnail">
+			<div class="thumbnail thumbnail-{{ data.type }}">
 				<# if ( data.uploading ) { #>
 					<div class="media-progress-bar"><div></div></div>
 				<# } else if ( 'image' === data.type ) { #>
@@ -990,9 +980,11 @@ function wp_print_media_templates() {
 								<img src="{{ attachment.url }}" />
 							<# } #>
 						</dt>
-						<dd class="wp-caption-text gallery-caption">
-							{{ attachment.caption }}
-						</dd>
+						<# if ( attachment.caption.trim() ) { #>
+							<dd class="wp-caption-text gallery-caption">
+								{{ attachment.caption }}
+							</dd>
+						<# } #>
 					</dl>
 					<# if ( index % data.columns === data.columns - 1 ) { #>
 						<br style="clear: both;">
@@ -1053,6 +1045,14 @@ function wp_print_media_templates() {
 	<script type="text/html" id="tmpl-crop-content">
 		<img class="crop-image" src="{{ data.url }}">
 		<div class="upload-errors"></div>
+	</script>
+
+	<script type="text/html" id="tmpl-editor-embed">
+		<div class="toolbar">
+			<div class="dashicons dashicons-no-alt remove"></div>
+		</div>
+		{{{ data.content }}}
+		<div class="wpview-overlay"></div>
 	</script>
 
 	<?php
