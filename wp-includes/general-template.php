@@ -753,7 +753,7 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
  * @return string|null String on retrieve, null when displaying.
  */
 function wp_title($sep = '&raquo;', $display = true, $seplocation = '') {
-	global $wpdb, $wp_locale;
+	global $wp_locale;
 
 	$m = get_query_var('m');
 	$year = get_query_var('year');
@@ -1308,7 +1308,7 @@ function wp_get_archives( $args = '' ) {
 				if ( $r['show_post_count'] ) {
 					$r['after'] = '&nbsp;(' . $result->posts . ')' . $after;
 				}
-				$output .= get_archives_link( $url, $text, $r['format'], $r['before'], $after );
+				$output .= get_archives_link( $url, $text, $r['format'], $r['before'], $r['after'] );
 			}
 		}
 	} elseif ( 'weekly' == $r['type'] ) {
