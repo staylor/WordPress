@@ -677,6 +677,9 @@ window.wp = window.wp || {};
 	} );
 	wp.mce.views.register( 'playlist', wp.mce.playlist );
 
+	/**
+	 * TinyMCE handler for the embed shortcode
+	 */
 	wp.mce.embed = {
 		shortcode: 'embed',
 		toView: wp.mce.gallery.toView,
@@ -708,7 +711,7 @@ window.wp = window.wp || {};
 				}
 			},
 			fetch: function () {
-				wp.ajax.send( 'filter-content', {
+				wp.ajax.send( 'parse-embed', {
 					data: {
 						post_ID: $( '#post_ID' ).val(),
 						content: this.shortcode.string()
@@ -716,19 +719,8 @@ window.wp = window.wp || {};
 				} ).done( this.setHtml );
 			},
 			setHtml: function ( content ) {
-				var scripts = $( content ).find( 'script' );
-
 				this.parsed = content;
-
 				$( this.node ).html( this.getHtml() );
-				if ( scripts ) {
-					_.each( scripts, function (script) {
-						var element = document.createElement( 'script' );
-						element.type = 'text/javascript';
-						element.src = script.src;
-						tinymce.activeEditor.contentDocument.getElementsByTagName( 'head' )[0].appendChild( element );
-					} );
-				}
 				this.parseMediaShortcodes();
 			},
 			parseMediaShortcodes: function () {

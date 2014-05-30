@@ -292,6 +292,7 @@ function category_description( $category = 0 ) {
  * The list of arguments is below:
  *     'show_option_all' (string) - Text to display for showing all categories.
  *     'show_option_none' (string) - Text to display for showing no categories.
+ *     'option_none_value' (mixed) - Value to use when no category is selected.
  *     'orderby' (string) default is 'ID' - What column to use for ordering the
  * categories.
  *     'order' (string) default is 'ASC' - What direction to order categories.
@@ -331,7 +332,7 @@ function wp_dropdown_categories( $args = '' ) {
 		'name' => 'cat', 'id' => '',
 		'class' => 'postform', 'depth' => 0,
 		'tab_index' => 0, 'taxonomy' => 'category',
-		'hide_if_empty' => false
+		'hide_if_empty' => false, 'option_none_value' => -1
 	);
 
 	$defaults['selected'] = ( is_category() ) ? get_query_var( 'cat' ) : 0;
@@ -343,6 +344,7 @@ function wp_dropdown_categories( $args = '' ) {
 	}
 
 	$r = wp_parse_args( $args, $defaults );
+	$option_none_value = $r['option_none_value'];
 
 	if ( ! isset( $r['pad_counts'] ) && $r['show_count'] && $r['hierarchical'] ) {
 		$r['pad_counts'] = true;
@@ -381,7 +383,7 @@ function wp_dropdown_categories( $args = '' ) {
 		 * @param string $element Taxonomy element to list.
 		 */
 		$show_option_none = apply_filters( 'list_cats', $r['show_option_none'] );
-		$output .= "\t<option value='-1' selected='selected'>$show_option_none</option>\n";
+		$output .= "\t<option value='" . esc_attr( $option_none_value ) . "' selected='selected'>$show_option_none</option>\n";
 	}
 
 	if ( ! empty( $categories ) ) {
@@ -398,8 +400,8 @@ function wp_dropdown_categories( $args = '' ) {
 
 			/** This filter is documented in wp-includes/category-template.php */
 			$show_option_none = apply_filters( 'list_cats', $r['show_option_none'] );
-			$selected = ( '-1' === strval($r['selected']) ) ? " selected='selected'" : '';
-			$output .= "\t<option value='-1'$selected>$show_option_none</option>\n";
+			$selected = selected( $option_none_value, $r['selected'], false );
+			$output .= "\t<option value='" . esc_attr( $option_none_value ) . "'$selected>$show_option_none</option>\n";
 		}
 
 		if ( $r['hierarchical'] ) {
@@ -442,7 +444,7 @@ function wp_dropdown_categories( $args = '' ) {
  *     'hide_empty' (bool|int) default is 1 - Whether to hide categories that
  * don't have any posts attached to them.
  *     'use_desc_for_title' (bool|int) default is 1 - Whether to use the
- * description instead of the category title.
+ * category description as the title attribute.
  *     'feed' - See {@link get_categories()}.
  *     'feed_type' - See {@link get_categories()}.
  *     'feed_image' - See {@link get_categories()}.
@@ -970,9 +972,7 @@ class Walker_Category extends Walker {
 		);
 
 		$link = '<a href="' . esc_url( get_term_link( $category ) ) . '" ';
-		if ( $args['use_desc_for_title'] == 0 || empty( $category->description ) ) {
-			$link .= '';
-		} else {
+		if ( $args['use_desc_for_title'] && ! empty( $category->description ) ) {
 			/**
 			 * Filter the category description for display.
 			 *

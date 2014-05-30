@@ -678,30 +678,27 @@ function comments_link( $deprecated = '', $deprecated_2 = '' ) {
  *
  * @since 1.5.0
  *
- * @param int|WP_Post $post_id Post ID or WP_Post object. Default current post.
+ * @param int|WP_Post $post_id Optional. Post ID or WP_Post object. Default is global `$post`.
  * @return int The number of comments a post has.
  */
 function get_comments_number( $post_id = 0 ) {
-	$post_id = absint( $post_id );
+	$post = get_post( $post_id );
 
-	if ( !$post_id )
-		$post_id = get_the_ID();
-
-	$post = get_post($post_id);
-	if ( ! isset($post->comment_count) )
+	if ( ! isset( $post->comment_count ) ) {
 		$count = 0;
-	else
+	} else {
 		$count = $post->comment_count;
+	}
 
 	/**
 	 * Filter the returned comment count for a post.
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param int         $count   Nnumber of comments a post has.
-	 * @param int|WP_Post $post_id Post ID or WP_Post object.
+	 * @param int $count   Number of comments a post has.
+	 * @param int $post_id Post ID.
 	 */
-	return apply_filters( 'get_comments_number', $count, $post_id );
+	return apply_filters( 'get_comments_number', $count, $post->ID );
 }
 
 /**
@@ -1052,7 +1049,7 @@ function wp_comment_form_unfiltered_html_nonce() {
  * and the post ID respectively.
  *
  * The $file path is passed through a filter hook called, 'comments_template'
- * which includes the TEMPLATEPATH and $file combined. Tries the $filtered path
+ * which includes the template path and $file combined. Tries the $filtered path
  * first and if it fails it will require the default comment template from the
  * default theme. If either does not exist, then the WordPress process will be
  * halted. It is advised for that reason, that the default theme is not deleted.
@@ -1137,7 +1134,7 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 	if ( !defined('COMMENTS_TEMPLATE') )
 		define('COMMENTS_TEMPLATE', true);
 
-	$theme_template = STYLESHEETPATH . $file;
+	$theme_template = get_stylesheet_directory() . $file;
 	/**
 	 * Filter the path to the theme template file used for the comments template.
 	 *
@@ -1148,8 +1145,8 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 	$include = apply_filters( 'comments_template', $theme_template );
 	if ( file_exists( $include ) )
 		require( $include );
-	elseif ( file_exists( TEMPLATEPATH . $file ) )
-		require( TEMPLATEPATH . $file );
+	elseif ( file_exists( get_template_directory() . $file ) )
+		require( get_template_directory() . $file );
 	else // Backward compat code will be removed in a future release
 		require( ABSPATH . WPINC . '/theme-compat/comments.php');
 }

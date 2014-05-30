@@ -1252,6 +1252,7 @@ function setup_userdata($for_user_id = '') {
  * <ol>
  * <li>show_option_all - Text to show all and whether HTML option exists.</li>
  * <li>show_option_none - Text for show none and whether HTML option exists.</li>
+ * <li>option_none_value - Value to use when no option is selected.</li>
  * <li>hide_if_only_one_author - Don't create the dropdown if there is only one user.</li>
  * <li>orderby - SQL order by clause for what order the users appear. Default is 'display_name'.</li>
  * <li>order - Default is 'ASC'. Can also be 'DESC'.</li>
@@ -1285,7 +1286,8 @@ function wp_dropdown_users( $args = '' ) {
 		'include' => '', 'exclude' => '', 'multi' => 0,
 		'show' => 'display_name', 'echo' => 1,
 		'selected' => 0, 'name' => 'user', 'class' => '', 'id' => '',
-		'blog_id' => $GLOBALS['blog_id'], 'who' => '', 'include_selected' => false
+		'blog_id' => $GLOBALS['blog_id'], 'who' => '', 'include_selected' => false,
+		'option_none_value' => -1
 	);
 
 	$defaults['selected'] = is_author() ? get_query_var( 'author' ) : 0;
@@ -1294,6 +1296,7 @@ function wp_dropdown_users( $args = '' ) {
 	$show = $r['show'];
 	$show_option_all = $r['show_option_all'];
 	$show_option_none = $r['show_option_none'];
+	$option_none_value = $r['option_none_value'];
 
 	$query_args = wp_array_slice_assoc( $r, array( 'blog_id', 'include', 'exclude', 'orderby', 'order', 'who' ) );
 	$query_args['fields'] = array( 'ID', 'user_login', $show );
@@ -1314,8 +1317,8 @@ function wp_dropdown_users( $args = '' ) {
 		}
 
 		if ( $show_option_none ) {
-			$_selected = selected( -1, $r['selected'], false );
-			$output .= "\t<option value='-1'$_selected>$show_option_none</option>\n";
+			$_selected = selected( $option_none_value, $r['selected'], false );
+			$output .= "\t<option value='" . esc_attr( $option_none_value ) . "'$_selected>$show_option_none</option>\n";
 		}
 
 		$found_selected = false;

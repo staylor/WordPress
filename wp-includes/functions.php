@@ -605,11 +605,12 @@ function wp_get_http_headers( $url, $deprecated = false ) {
 }
 
 /**
- * Whether today is a new day.
+ * Whether the publish date of the current post in the loop is different from the
+ * publish date of the previous post in the loop.
  *
  * @since 0.71
- * @uses $day Today
- * @uses $previousday Previous day
+ * @global string $currentday The day of the current post in the loop.
+ * @global string $previousday The day of the previous post in the loop.
  *
  * @return int 1 when new day, 0 if not a new day.
  */
@@ -3386,15 +3387,7 @@ function is_ssl() {
  * @return bool True if forced, false if not forced.
  */
 function force_ssl_login( $force = null ) {
-	static $forced = false;
-
-	if ( !is_null( $force ) ) {
-		$old_forced = $forced;
-		$forced = $force;
-		return $old_forced;
-	}
-
-	return $forced;
+	return force_ssl_admin( $force );
 }
 
 /**
@@ -4303,9 +4296,6 @@ function wp_auth_check_html() {
 	$login_url = wp_login_url();
 	$current_domain = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'];
 	$same_domain = ( strpos( $login_url, $current_domain ) === 0 );
-
-	if ( $same_domain && force_ssl_login() && ! force_ssl_admin() )
-		$same_domain = false;
 
 	/**
 	 * Filter whether the authentication check originated at the same domain.

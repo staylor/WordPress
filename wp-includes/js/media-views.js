@@ -785,18 +785,19 @@
 	 */
 	media.controller.GalleryEdit = media.controller.Library.extend({
 		defaults: {
-			id:         'gallery-edit',
-			multiple:   false,
-			describe:   true,
-			edge:       199,
-			editing:    false,
-			sortable:   true,
-			searchable: false,
-			toolbar:    'gallery-edit',
-			content:    'browse',
-			title:      l10n.editGalleryTitle,
-			priority:   60,
-			dragInfo:   true,
+			id:              'gallery-edit',
+			multiple:        false,
+			describe:        true,
+			edge:            199,
+			editing:         false,
+			sortable:        true,
+			searchable:      false,
+			toolbar:         'gallery-edit',
+			content:         'browse',
+			title:           l10n.editGalleryTitle,
+			priority:        60,
+			dragInfo:        true,
+			displaySettings: true,
 
 			// Don't sync the selection, as the Edit Gallery library
 			// *is* the selection.
@@ -838,10 +839,15 @@
 		},
 
 		gallerySettings: function( browser ) {
+			if ( ! this.get('displaySettings') ) {
+				return;
+			}
+
 			var library = this.get('library');
 
-			if ( ! library || ! browser )
+			if ( ! library || ! browser ) {
 				return;
+			}
 
 			library.gallery = library.gallery || new Backbone.Model();
 
@@ -2307,6 +2313,12 @@
 						} else {
 							frame.close();
 						}
+
+						// Keep focus inside media modal
+						// after canceling a gallery
+						new media.view.FocusManager({
+							el: this.el
+						}).focus();
 					}
 				},
 				separateCancel: new media.View({
@@ -2489,6 +2501,12 @@
 					}) );
 
 					this.controller.setState('gallery-edit');
+
+					// Keep focus inside media modal
+					// after jumping to gallery view
+					new media.view.FocusManager({
+						el: this.el
+					}).focus();
 				}
 			});
 		},
@@ -2515,6 +2533,12 @@
 					}) );
 
 					this.controller.setState('playlist-edit');
+
+					// Keep focus inside media modal
+					// after jumping to playlist view
+					new media.view.FocusManager({
+						el: this.el
+					}).focus();
 				}
 			});
 		},
@@ -2541,6 +2565,12 @@
 					}) );
 
 					this.controller.setState('video-playlist-edit');
+
+					// Keep focus inside media modal
+					// after jumping to video playlist view
+					new media.view.FocusManager({
+						el: this.el
+					}).focus();
 				}
 			});
 		},
@@ -2950,6 +2980,10 @@
 				propagate: true,
 				freeze:    true
 			});
+
+			this.focusManager = new media.view.FocusManager({
+				el: this.el
+			});
 		},
 		/**
 		 * @returns {Object}
@@ -3031,7 +3065,12 @@
 				return this;
 			}
 
-			this.$el.hide();
+			// Hide modal and remove restricted media modal tab focus once it's closed
+			this.$el.hide().undelegate( 'keydown' );
+
+			// Put focus back in useful location once modal is closed
+			$('#wpbody-content').focus();
+
 			this.propagate('close');
 
 			// If the `freeze` option is set, restore the container's scroll position.
@@ -3092,6 +3131,9 @@
 			if ( 27 === event.which && this.$el.is(':visible') ) {
 				this.escape();
 				event.stopImmediatePropagation();
+			} else {
+				// Keep focus inside the media modal
+				this.focusManager;
 			}
 		}
 	});
@@ -3111,15 +3153,8 @@
 		},
 
 		focus: function() {
-			if ( _.isUndefined( this.index ) ) {
-				return;
-			}
-
-			// Update our collection of `$tabbables`.
-			this.$tabbables = this.$(':tabbable');
-
-			// If tab is saved, focus it.
-			this.$tabbables.eq( this.index ).focus();
+			// Reset focus on first left menu item
+			$('.media-menu-item').first().focus();
 		},
 		/**
 		 * @param {Object} event
@@ -3130,37 +3165,23 @@
 				return;
 			}
 
-			// First try to update the index.
-			if ( _.isUndefined( this.index ) ) {
-				this.updateIndex( event );
-			}
-
-			// If we still don't have an index, bail.
-			if ( _.isUndefined( this.index ) ) {
-				return;
-			}
-
-			var index = this.index + ( event.shiftKey ? -1 : 1 );
-
-			if ( index >= 0 && index < this.$tabbables.length ) {
-				this.index = index;
-			} else {
-				delete this.index;
+			// Keep tab focus within media modal while it's open
+			if ( event.target === this.tabbableLast[0] && !event.shiftKey ) {
+				this.tabbableFirst.focus();
+				return false;
+			} else if ( event.target === this.tabbableFirst[0] && event.shiftKey ) {
+				this.tabbableLast.focus();
+				return false;
 			}
 		},
 		/**
 		 * @param {Object} event
 		 */
-		updateIndex: function( event ) {
-			this.$tabbables = this.$(':tabbable');
-
-			var index = this.$tabbables.index( event.target );
-
-			if ( -1 === index ) {
-				delete this.index;
-			} else {
-				this.index = index;
-			}
+		updateIndex: function() {
+			// Resets tabbable elements
+			this.tabbables = $( ':tabbable', this.$el );
+			this.tabbableFirst = this.tabbables.filter( ':first' );
+			this.tabbableLast = this.tabbables.filter( ':last' );
 		}
 	});
 
@@ -4391,6 +4412,11 @@
 		className: 'attachment',
 		template:  media.template('attachment'),
 
+		attributes: {
+			tabIndex: 0,
+			role: 'checkbox'
+		},
+
 		events: {
 			'click .attachment-preview':      'toggleSelectionHandler',
 			'change [data-setting]':          'updateSetting',
@@ -4399,7 +4425,8 @@
 			'change [data-setting] textarea': 'updateSetting',
 			'click .close':                   'removeFromLibrary',
 			'click .check':                   'removeFromSelection',
-			'click a':                        'preventDefault'
+			'click a':                        'preventDefault',
+			'keydown':                        'toggleSelectionHandler'
 		},
 
 		buttons: {},
@@ -4407,6 +4434,7 @@
 		initialize: function() {
 			var selection = this.options.selection;
 
+			this.$el.attr('aria-label', this.model.attributes.title).attr('aria-checked', false);
 			this.model.on( 'change:sizes change:uploading', this.render, this );
 			this.model.on( 'change:title', this._syncTitle, this );
 			this.model.on( 'change:caption', this._syncCaption, this );
@@ -4511,6 +4539,10 @@
 		toggleSelectionHandler: function( event ) {
 			var method;
 
+			// Catch enter and space events
+			if ( 'keydown' === event.type && 13 !== event.keyCode && 32 !== event.keyCode ) {
+				return;
+			}
 			if ( event.shiftKey ) {
 				method = 'between';
 			} else if ( event.ctrlKey || event.metaKey ) {
@@ -4567,6 +4599,10 @@
 				return;
 			}
 
+			// Fixes bug that loses focus when selecting a featured image
+			if ( !method ) {
+				method = 'add';
+			}
 			if ( method !== 'add' ) {
 				method = 'reset';
 			}
@@ -4611,7 +4647,7 @@
 				return;
 			}
 
-			this.$el.addClass('selected');
+			this.$el.addClass('selected').attr('aria-checked', true);
 		},
 		/**
 		 * @param {Backbone.Model} model
@@ -4626,7 +4662,7 @@
 			if ( ! selection || ( collection && collection !== selection ) ) {
 				return;
 			}
-			this.$el.removeClass('selected');
+			this.$el.removeClass('selected').attr('aria-checked', false);
 		},
 		/**
 		 * @param {Backbone.Model} model
@@ -4858,6 +4894,10 @@
 	media.view.Attachments = media.View.extend({
 		tagName:   'ul',
 		className: 'attachments',
+
+		attributes: {
+			tabIndex: -1
+		},
 
 		cssTemplate: media.template('attachments-css'),
 
@@ -5573,6 +5613,12 @@
 		clear: function( event ) {
 			event.preventDefault();
 			this.collection.reset();
+
+			// Keep focus inside media modal
+			// after clear link is selected
+			new media.view.FocusManager({
+				el: this.el
+			}).focus();
 		}
 	});
 
@@ -5898,12 +5944,6 @@
 
 		initialize: function() {
 			/**
-			 * @member {wp.media.view.FocusManager}
-			 */
-			this.focusManager = new media.view.FocusManager({
-				el: this.el
-			});
-			/**
 			 * call 'initialize' directly on the parent class
 			 */
 			media.view.Attachment.prototype.initialize.apply( this, arguments );
@@ -5916,7 +5956,6 @@
 			 * call 'render' directly on the parent class
 			 */
 			media.view.Attachment.prototype.render.apply( this, arguments );
-			this.focusManager.focus();
 			return this;
 		},
 		/**
@@ -5927,6 +5966,11 @@
 
 			if ( confirm( l10n.warnDelete ) ) {
 				this.model.destroy();
+				// Keep focus inside media modal
+				// after image is deleted
+				new media.view.FocusManager({
+					el: this.el
+				}).focus();
 			}
 		},
 		/**
@@ -5982,13 +6026,6 @@
 		},
 
 		initialize: function() {
-			/**
-			 * @member {wp.media.view.FocusManager}
-			 */
-			this.focusManager = new media.view.FocusManager({
-				el: this.el
-			});
-
 			this.model.on( 'change:compat', this.render, this );
 		},
 		/**
@@ -6015,8 +6052,6 @@
 			this.views.detach();
 			this.$el.html( compat.item );
 			this.views.render();
-
-			this.focusManager.focus();
 			return this;
 		},
 		/**
@@ -6144,7 +6179,7 @@
 		},
 
 		initialize: function() {
-			this.$input = $('<input/>').attr( 'type', 'text' ).val( this.model.get('url') );
+			this.$input = $('<input id="embed-url-field" />').attr( 'type', 'text' ).val( this.model.get('url') );
 			this.input = this.$input[0];
 
 			this.spinner = $('<span class="spinner" />')[0];
@@ -6200,7 +6235,51 @@
 	 */
 	media.view.EmbedLink = media.view.Settings.extend({
 		className: 'embed-link-settings',
-		template:  media.template('embed-link-settings')
+		template:  media.template('embed-link-settings'),
+
+		initialize: function() {
+			this.spinner = $('<span class="spinner" />');
+			this.$el.append( this.spinner[0] );
+			this.listenTo( this.model, 'change:url', this.updateoEmbed );
+		},
+
+		updateoEmbed: function() {
+			var url = this.model.get( 'url' );
+
+			this.$('.setting.title').show();
+			// clear out previous results
+			this.$('.embed-container').hide().find('.embed-preview').html('');
+
+			// only proceed with embed if the field contains more than 6 characters
+			if ( url && url.length < 6 ) {
+				return;
+			}
+
+			this.spinner.show();
+
+			setTimeout( _.bind( this.fetch, this ), 500 );
+		},
+
+		fetch: function() {
+			// check if they haven't typed in 500 ms
+			if ( $('#embed-url-field').val() !== this.model.get('url') ) {
+				return;
+			}
+
+			wp.ajax.send( 'parse-embed', {
+				data : {
+					post_ID: media.view.settings.post.id,
+					content: '[embed]' + this.model.get('url') + '[/embed]'
+				}
+			} ).done( _.bind( this.renderoEmbed, this ) );
+		},
+
+		renderoEmbed: function(html) {
+			this.spinner.hide();
+
+			this.$('.setting.title').hide();
+			this.$('.embed-container').show().find('.embed-preview').html( html );
+		}
 	});
 
 	/**

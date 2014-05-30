@@ -2309,6 +2309,8 @@ function wp_ajax_send_attachment_to_editor() {
  * @since 3.5.0
  */
 function wp_ajax_send_link_to_editor() {
+	global $post, $wp_embed;
+
 	check_ajax_referer( 'media-send-to-editor', 'nonce' );
 
 	if ( ! $src = wp_unslash( $_POST['src'] ) )
@@ -2323,9 +2325,20 @@ function wp_ajax_send_link_to_editor() {
 	if ( ! $title = trim( wp_unslash( $_POST['title'] ) ) )
 		$title = wp_basename( $src );
 
-	$html = '';
-	if ( $title )
+	$post = get_post( isset( $_POST['post_id'] ) ? $_POST['post_id'] : 0 );
+	// ping WordPress for an embed
+	$check_embed = $wp_embed->run_shortcode( '[embed]'. $src .'[/embed]' );
+	// fallback that WordPress creates when no oEmbed was found
+	$fallback = $wp_embed->maybe_make_link( $src );
+
+	if ( $check_embed !== $fallback ) {
+		// TinyMCE view for [embed] will parse this
+		$html = '[embed]' . $src . '[/embed]';
+	} elseif ( $title ) {
 		$html = '<a href="' . esc_url( $src ) . '">' . $title . '</a>';
+	} else {
+		$html = '';
+	}
 
 	// Figure out what filter to run:
 	$type = 'file';
@@ -2506,12 +2519,12 @@ function wp_ajax_query_themes() {
 }
 
 /**
- * Apply `the_content` filters to a string based on the post ID.
+ * Apply [embed] handlers to a string.
  *
  * @since 4.0.0
  */
-function wp_ajax_filter_content() {
-	global $post;
+function wp_ajax_parse_embed() {
+	global $post, $wp_embed;
 
 	if ( ! $post = get_post( (int) $_REQUEST['post_ID'] ) ) {
 		wp_send_json_error();
@@ -2523,5 +2536,8 @@ function wp_ajax_filter_content() {
 
 	setup_postdata( $post );
 
-	wp_send_json_success( apply_filters( 'the_content', wp_unslash( $_POST['content'] ) ) );
+	$parsed = $wp_embed->run_shortcode( $_POST['content'] );
+	$parsed = do_shortcode( $parsed );
+
+	wp_send_json_success( $parsed );
 }

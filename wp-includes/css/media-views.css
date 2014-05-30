@@ -478,8 +478,7 @@
 	border-right: 0;
 }
 
-.media-router > a:active,
-.media-router > a:focus {
+.media-router > a:active {
 	outline: none;
 }
 
@@ -694,6 +693,16 @@
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+}
+
+.attachment:focus {
+	-webkit-box-shadow:
+		0 0 0 1px #5b9dd9,
+		0 0 2px 2px #5b9dd9;
+	box-shadow:
+		0 0 0 1px #5b9dd9,
+		0 0 2px 2px #5b9dd9;
+	outline: none;
 }
 
 .selected.attachment {
@@ -925,6 +934,7 @@
 	right: 300px;
 	bottom: 0;
 	overflow: auto;
+	outline: none;
 }
 
 .attachments-browser .instructions {
@@ -1583,7 +1593,7 @@
 
 .media-frame .embed-url .spinner {
 	position: absolute;
-	top: 16px;
+	top: 32px;
 	right: 26px;
 }
 
@@ -1594,12 +1604,20 @@
 .embed-link-settings,
 .embed-media-settings {
 	position: absolute;
-	top: 60px;
+	top: 70px;
 	left: 0;
 	right: 0;
 	bottom: 0;
 	padding: 16px 16px 32px;
 	overflow: auto;
+}
+
+.embed-preview img, .embed-preview iframe, .embed-preview embed {
+	max-width: 100%;
+}
+
+.embed-preview img {
+	height: auto;
 }
 
 .image-details .media-modal {
