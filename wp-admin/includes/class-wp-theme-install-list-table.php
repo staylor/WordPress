@@ -48,14 +48,7 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 
 		$nonmenu_tabs = array( 'theme-information' ); // Valid actions to perform which do not have a Menu item.
 
-		/**
-		 * Filter the tabs shown on the Install Themes screen.
-		 *
-		 * @since 2.8.0
-		 *
-		 * @param array $tabs The tabs shown on the Install Themes screen. Defaults are
-		 *                    'dashboard', 'search', 'upload', 'featured', 'new', and 'updated'.
-		 */
+		/** This filter is documented in wp-admin/theme-install.php */
 		$tabs = apply_filters( 'install_themes_tabs', $tabs );
 
 		/**
@@ -99,7 +92,7 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 				break;
 
 			case 'featured':
-			//case 'popular':
+			// case 'popular':
 			case 'new':
 			case 'updated':
 				$args['browse'] = $tab;
@@ -183,7 +176,7 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 		parent::tablenav( 'bottom' );
 	}
 
-	protected function display_rows() {
+	public function display_rows() {
 		$themes = $this->items;
 		foreach ( $themes as $theme ) {
 				?>
@@ -214,7 +207,7 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 	 *     public 'description' => string 'A basic magazine style layout with a fully customizable layout through a backend interface. Designed by <a href="http://bavotasan.com">c.bavota</a> of <a href="http://tinkerpriestmedia.com">Tinker Priest Media</a>.'
 	 *     public 'download_link' => string 'http://wordpress.org/themes/download/magazine-basic.1.1.zip'
 	 */
-	protected function single_row( $theme ) {
+	public function single_row( $theme ) {
 		global $themes_allowedtags;
 
 		if ( empty( $theme ) )
@@ -244,16 +237,16 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 		$status = $this->_get_theme_status( $theme );
 
 		switch ( $status ) {
-			default:
-			case 'install':
-				$actions[] = '<a class="install-now" href="' . esc_url( wp_nonce_url( $install_url, 'install-theme_' . $theme->slug ) ) . '" title="' . esc_attr( sprintf( __( 'Install %s' ), $name ) ) . '">' . __( 'Install Now' ) . '</a>';
-				break;
 			case 'update_available':
 				$actions[] = '<a class="install-now" href="' . esc_url( wp_nonce_url( $update_url, 'upgrade-theme_' . $theme->slug ) ) . '" title="' . esc_attr( sprintf( __( 'Update to version %s' ), $theme->version ) ) . '">' . __( 'Update' ) . '</a>';
 				break;
 			case 'newer_installed':
 			case 'latest_installed':
 				$actions[] = '<span class="install-now" title="' . esc_attr__( 'This theme is already installed and is up to date' ) . '">' . _x( 'Installed', 'theme' ) . '</span>';
+				break;
+			case 'install':
+			default:
+				$actions[] = '<a class="install-now" href="' . esc_url( wp_nonce_url( $install_url, 'install-theme_' . $theme->slug ) ) . '" title="' . esc_attr( sprintf( __( 'Install %s' ), $name ) ) . '">' . __( 'Install Now' ) . '</a>';
 				break;
 		}
 
@@ -350,8 +343,6 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 		$name   = wp_kses( $theme->name,   $themes_allowedtags );
 		$author = wp_kses( $theme->author, $themes_allowedtags );
 
-		$num_ratings = sprintf( _n( '(based on %s rating)', '(based on %s ratings)', $theme->num_ratings ), number_format_i18n( $theme->num_ratings ) );
-
 		$install_url = add_query_arg( array(
 			'action' => 'install-theme',
 			'theme'  => $theme->slug,
@@ -367,16 +358,16 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 		?>
 		<div class="install-theme-info"><?php
 			switch ( $status ) {
-				default:
-				case 'install':
-					echo '<a class="theme-install button-primary" href="' . esc_url( wp_nonce_url( $install_url, 'install-theme_' . $theme->slug ) ) . '">' . __( 'Install' ) . '</a>';
-					break;
 				case 'update_available':
 					echo '<a class="theme-install button-primary" href="' . esc_url( wp_nonce_url( $update_url, 'upgrade-theme_' . $theme->slug ) ) . '" title="' . esc_attr( sprintf( __( 'Update to version %s' ), $theme->version ) ) . '">' . __( 'Update' ) . '</a>';
 					break;
 				case 'newer_installed':
 				case 'latest_installed':
 					echo '<span class="theme-install" title="' . esc_attr__( 'This theme is already installed and is up to date' ) . '">' . _x( 'Installed', 'theme' ) . '</span>';
+					break;
+				case 'install':
+				default:
+					echo '<a class="theme-install button-primary" href="' . esc_url( wp_nonce_url( $install_url, 'install-theme_' . $theme->slug ) ) . '">' . __( 'Install' ) . '</a>';
 					break;
 			} ?>
 			<h3 class="theme-name"><?php echo $name; ?></h3>
@@ -403,12 +394,12 @@ class WP_Theme_Install_List_Table extends WP_Themes_List_Table {
 	 * Send required variables to JavaScript land
 	 *
 	 * @since 3.4.0
-	 * @access private
+	 * @access public
 	 *
 	 * @uses $tab Global; current tab within Themes->Install screen
 	 * @uses $type Global; type of search.
 	 */
-	private function _js_vars( $extra_args = array() ) {
+	public function _js_vars( $extra_args = array() ) {
 		global $tab, $type;
 		parent::_js_vars( compact( 'tab', 'type' ) );
 	}

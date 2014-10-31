@@ -44,6 +44,7 @@ final class WP_Theme implements ArrayAccess {
 		'twentytwelve'   => 'Twenty Twelve',
 		'twentythirteen' => 'Twenty Thirteen',
 		'twentyfourteen' => 'Twenty Fourteen',
+		'twentyfifteen'  => 'Twenty Fifteen',
 	);
 
 	/**
@@ -662,10 +663,7 @@ final class WP_Theme implements ArrayAccess {
 				break;
 			case 'Author' :
 				if ( $this->get('AuthorURI') ) {
-					static $attr = null;
-					if ( ! isset( $attr ) )
-						$attr = esc_attr__( 'Visit author homepage' );
-					$value = sprintf( '<a href="%1$s" title="%2$s">%3$s</a>', $this->display( 'AuthorURI', true, $translate ), $attr, $value );
+					$value = sprintf( '<a href="%1$s">%2$s</a>', $this->display( 'AuthorURI', true, $translate ), $value );
 				} elseif ( ! $value ) {
 					$value = __( 'Anonymous' );
 				}

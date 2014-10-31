@@ -53,6 +53,10 @@
 	max-width: 400px;
 }
 
+.audio-details .embed-media-settings {
+	overflow: visible;
+}
+
 .media-embed-details .embed-media-settings .setting span {
 	max-width: 400px;
 	width: auto;
@@ -88,6 +92,17 @@
 	margin: 0 0 10px;
 }
 
+.wp-video {
+	max-width: 100%;
+	height: auto;
+}
+
+video.wp-video-shortcode,
+.wp-video-shortcode video {
+	max-width: 100%;
+	display: inline-block;
+}
+
 .video-details .wp-video-holder {
 	width: 100%;
 	max-width: 640px;
@@ -99,6 +114,10 @@
 	margin: 12px 0 18px;
 	font-size: 14px;
 	line-height: 1.5;
+}
+
+.wp-admin .wp-playlist {
+	margin: 0 0 18px;
 }
 
 .wp-playlist video {
@@ -199,11 +218,11 @@
 	border-bottom: 0;
 }
 
-.wp-playlist-light .wp-playlist-item {
+.wp-playlist-light .wp-playlist-caption {
 	color: #333;
 }
 
-.wp-playlist-dark .wp-playlist-item {
+.wp-playlist-dark .wp-playlist-caption {
 	color: #dedede;
 }
 

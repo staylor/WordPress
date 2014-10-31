@@ -1309,6 +1309,27 @@ function get_category_children( $id, $before = '/', $after = '', $visited = arra
 }
 
 /**
+ * Retrieves all category IDs.
+ *
+ * @since 2.0.0
+ * @deprecated 4.0.0 Use get_terms() instead.
+ * @see get_terms()
+ * @link http://codex.wordpress.org/Function_Reference/get_all_category_ids
+ *
+ * @return object List of all of the category IDs.
+ */
+function get_all_category_ids() {
+	_deprecated_function( __FUNCTION__, '4.0', 'get_terms()' );
+
+	if ( ! $cat_ids = wp_cache_get( 'all_category_ids', 'category' ) ) {
+		$cat_ids = get_terms( 'category', array('fields' => 'ids', 'get' => 'all') );
+		wp_cache_add( 'all_category_ids', $cat_ids, 'category' );
+	}
+
+	return $cat_ids;
+}
+
+/**
  * Retrieve the description of the author of the current post.
  *
  * @since 1.5.0
@@ -3435,4 +3456,46 @@ function default_topic_count_text( $count ) {
 function format_to_post( $content ) {
 	_deprecated_function( __FUNCTION__, '3.9' );
 	return $content;
+}
+
+/**
+ * Formerly used to escape strings before searching the DB. It was poorly documented and never worked as described.
+ *
+ * @since 2.5.0
+ * @deprecated 4.0.0
+ * @deprecated Use wpdb::esc_like()
+ *
+ * @param string $text The text to be escaped.
+ * @return string text, safe for inclusion in LIKE query.
+ */
+function like_escape($text) {
+	_deprecated_function( __FUNCTION__, '4.0', 'wpdb::esc_like()' );
+	return str_replace( array( "%", "_" ), array( "\\%", "\\_" ), $text );
+}
+
+/**
+ * Determines if the URL can be accessed over SSL.
+ *
+ * Determines if the URL can be accessed over SSL by using the WordPress HTTP API to access
+ * the URL using https as the scheme.
+ *
+ * @since 2.5.0
+ * @deprecated 4.0.0
+ *
+ * @param string $url The URL to test.
+ * @return bool Whether SSL access is available.
+ */
+function url_is_accessable_via_ssl( $url ) {
+	_deprecated_function( __FUNCTION__, '4.0' );
+
+	$response = wp_remote_get( set_url_scheme( $url, 'https' ) );
+
+	if ( !is_wp_error( $response ) ) {
+		$status = wp_remote_retrieve_response_code( $response );
+		if ( 200 == $status || 401 == $status ) {
+			return true;
+		}
+	}
+
+	return false;
 }

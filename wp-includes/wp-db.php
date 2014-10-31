@@ -567,7 +567,7 @@ class wpdb {
 	 * the actual setting up of the class properties and connection
 	 * to the database.
 	 *
-	 * @link http://core.trac.wordpress.org/ticket/3354
+	 * @link https://core.trac.wordpress.org/ticket/3354
 	 * @since 2.0.8
 	 *
 	 * @param string $dbuser MySQL database user
@@ -604,6 +604,11 @@ class wpdb {
 		$this->dbname = $dbname;
 		$this->dbhost = $dbhost;
 
+		// wp-config.php creation will manually connect when ready.
+		if ( defined( 'WP_SETUP_CONFIG' ) ) {
+			return;
+		}
+
 		$this->db_connect();
 	}
 
@@ -634,7 +639,7 @@ class wpdb {
 	}
 
 	/**
-	 * Magic function, for backwards compatibility
+	 * Magic function, for backwards compatibility.
 	 *
 	 * @since 3.5.0
 	 *
@@ -646,7 +651,7 @@ class wpdb {
 	}
 
 	/**
-	 * Magic function, for backwards compatibility
+	 * Magic function, for backwards compatibility.
 	 *
 	 * @since 3.5.0
 	 *
@@ -659,7 +664,7 @@ class wpdb {
 	}
 
 	/**
-	 * Magic function, for backwards compatibility
+	 * Magic function, for backwards compatibility.
 	 *
 	 * @since 3.5.0
 	 *
@@ -1037,7 +1042,11 @@ class wpdb {
 		}
 
 		$class = get_class( $this );
-		_doing_it_wrong( $class, "$class must set a database connection for use with escaping.", E_USER_NOTICE );
+		if ( function_exists( '__' ) ) {
+			_doing_it_wrong( $class, sprintf( __( '%s must set a database connection for use with escaping.' ), $class ), E_USER_NOTICE );
+		} else {
+			_doing_it_wrong( $class, sprintf( '%s must set a database connection for use with escaping.', $class ), E_USER_NOTICE );
+		}
 		return addslashes( $string );
 	}
 
@@ -1166,6 +1175,32 @@ class wpdb {
 		$query = preg_replace( '|(?<!%)%s|', "'%s'", $query ); // quote the strings, avoiding escaped strings like %%s
 		array_walk( $args, array( $this, 'escape_by_ref' ) );
 		return @vsprintf( $query, $args );
+	}
+
+	/**
+	 * First half of escaping for LIKE special characters % and _ before preparing for MySQL.
+	 *
+	 * Use this only before wpdb::prepare() or esc_sql().  Reversing the order is very bad for security.
+	 *
+	 * Example Prepared Statement:
+	 *  $wild = '%';
+	 *  $find = 'only 43% of planets';
+	 *  $like = $wild . $wpdb->esc_like( $find ) . $wild;
+	 *  $sql  = $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE post_content LIKE %s", $like );
+	 *
+	 * Example Escape Chain:
+	 *  $sql  = esc_sql( $wpdb->esc_like( $input ) );
+	 *
+	 * @since 4.0.0
+	 * @access public
+	 *
+	 * @param string $text The raw text to be escaped. The input typed by the user should have no
+	 *                     extra or deleted slashes.
+	 * @return string Text in the form of a LIKE phrase. The output is not SQL safe. Call $wpdb::prepare()
+	 *                or real_escape next.
+	 */
+	public function esc_like( $text ) {
+		return addcslashes( $text, '_%\\' );
 	}
 
 	/**
@@ -1314,6 +1349,10 @@ class wpdb {
 
 		$this->is_mysql = true;
 
+		/*
+		 * Deprecated in 3.9+ when using MySQLi. No equivalent
+		 * $new_link parameter exists for mysqli_* functions.
+		 */
 		$new_link = defined( 'MYSQL_NEW_LINK' ) ? MYSQL_NEW_LINK : true;
 		$client_flags = defined( 'MYSQL_CLIENT_FLAGS' ) ? MYSQL_CLIENT_FLAGS : 0;
 
@@ -2114,7 +2153,7 @@ class wpdb {
 				return version_compare( $version, '4.1', '>=' );
 			case 'set_charset' :
 				return version_compare( $version, '5.0.7', '>=' );
-		};
+		}
 
 		return false;
 	}
