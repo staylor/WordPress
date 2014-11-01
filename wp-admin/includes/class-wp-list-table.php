@@ -65,6 +65,15 @@ class WP_List_Table {
 	private $_pagination;
 
 	/**
+	 * The view switcher modes
+	 *
+	 * @since 4.1.0
+	 * @var array
+	 * @access protected
+	 */
+	protected $modes = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * The child class should call this constructor from its own constructor to override
@@ -113,6 +122,13 @@ class WP_List_Table {
 		if ( $args['ajax'] ) {
 			// wp_enqueue_script( 'list-table' );
 			add_action( 'admin_footer', array( $this, '_js_vars' ) );
+		}
+
+		if ( empty( $this->modes ) ) {
+			$this->modes = array(
+				'list'    => __( 'List View' ),
+				'excerpt' => __( 'Excerpt View' )
+			);
 		}
 	}
 
@@ -184,7 +200,6 @@ class WP_List_Table {
 
 	/**
 	 * Checks the current user's permissions
-	 * @uses wp_die()
 	 *
 	 * @since 3.1.0
 	 * @access public
@@ -521,16 +536,11 @@ class WP_List_Table {
 	 * @access protected
 	 */
 	protected function view_switcher( $current_mode ) {
-		$modes = array(
-			'list'    => __( 'List View' ),
-			'excerpt' => __( 'Excerpt View' )
-		);
-
 ?>
 		<input type="hidden" name="mode" value="<?php echo esc_attr( $current_mode ); ?>" />
 		<div class="view-switch">
 <?php
-			foreach ( $modes as $mode => $title ) {
+			foreach ( $this->modes as $mode => $title ) {
 				$classes = array( 'view-' . $mode );
 				if ( $current_mode == $mode )
 					$classes[] = 'current';
@@ -1058,7 +1068,7 @@ class WP_List_Table {
 			$response['total_pages_i18n'] = number_format_i18n( $this->_pagination_args['total_pages'] );
 		}
 
-		die( json_encode( $response ) );
+		die( wp_json_encode( $response ) );
 	}
 
 	/**
@@ -1075,6 +1085,6 @@ class WP_List_Table {
 			)
 		);
 
-		printf( "<script type='text/javascript'>list_args = %s;</script>\n", json_encode( $args ) );
+		printf( "<script type='text/javascript'>list_args = %s;</script>\n", wp_json_encode( $args ) );
 	}
 }

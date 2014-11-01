@@ -24,7 +24,7 @@
  *
  * @since 1.2.0
  *
- * @global wpdb $wpdb WordPress database access abstraction object.
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param string $author       Comment author name.
  * @param string $email        Comment author email.
@@ -128,14 +128,23 @@ function check_comment($author, $email, $url, $comment, $user_ip, $user_agent, $
  * Retrieve the approved comments for post $post_id.
  *
  * @since 2.0.0
- * @uses $wpdb
+ * @since 4.1.0 Refactored to leverage {@see WP_Comment_Query} over a direct query.
  *
- * @param int $post_id The ID of the post
- * @return array $comments The approved comments
+ * @param  int   $post_id The ID of the post.
+ * @param  array $args    Optional. See {@see WP_Comment_Query} for information
+ *                        on accepted arguments.
+ * @return array $comments The approved comments.
  */
-function get_approved_comments($post_id) {
-	global $wpdb;
-	return $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = '1' ORDER BY comment_date", $post_id));
+function get_approved_comments( $post_id = 0, $args = array() ) {
+	$defaults = array(
+		'status'  => 1,
+		'post_id' => $post_id,
+		'order'   => 'ASC',
+	);
+	$r = wp_parse_args( $args, $defaults );
+
+	$query = new WP_Comment_Query;
+	return $query->query( $r );
 }
 
 /**
@@ -146,7 +155,8 @@ function get_approved_comments($post_id) {
  * comment variable will be used, if it is set.
  *
  * @since 2.0.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param object|string|int $comment Comment to retrieve.
  * @param string $output Optional. OBJECT or ARRAY_A or ARRAY_N constants.
@@ -205,7 +215,8 @@ function get_comment(&$comment, $output = OBJECT) {
  * 'order', 'number', 'offset', and 'post_id'.
  *
  * @since 2.7.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param mixed $args Optional. Array or string of options to override defaults.
  * @return array List of comments.
@@ -221,6 +232,15 @@ function get_comments( $args = '' ) {
  * @since 3.1.0
  */
 class WP_Comment_Query {
+	/**
+	 * SQL for database query.
+	 *
+	 * @since 4.0.1
+	 * @access public
+	 * @var string
+	 */
+	public $request;
+
 	/**
 	 * Metadata query container
 	 *
@@ -257,8 +277,10 @@ class WP_Comment_Query {
 	 * Execute the query
 	 *
 	 * @since 3.1.0
-	 * @since 4.1.0 Introduced 'comment__in', 'comment__not_in',
-	 *              'post__in', and 'post__not_in' to $query_vars.
+	 * @since 4.1.0 Introduced 'comment__in', 'comment__not_in', 'post_author__in',
+	 *              'post_author__not_in', 'author__in', 'author__not_in', 'post__in',
+	 *              'post__not_in', 'include_unapproved', 'type__in', and 'type__not_in'
+	 *              to $query_vars.
 	 *
 	 * @param string|array $query_vars
 	 * @return int|array
@@ -268,6 +290,9 @@ class WP_Comment_Query {
 
 		$defaults = array(
 			'author_email' => '',
+			'author__in' => '',
+			'author__not_in' => '',
+			'include_unapproved' => '',
 			'fields' => '',
 			'ID' => '',
 			'comment__in' => '',
@@ -278,6 +303,8 @@ class WP_Comment_Query {
 			'orderby' => '',
 			'order' => 'DESC',
 			'parent' => '',
+			'post_author__in' => '',
+			'post_author__not_in' => '',
 			'post_ID' => '',
 			'post_id' => 0,
 			'post__in' => '',
@@ -287,8 +314,10 @@ class WP_Comment_Query {
 			'post_parent' => '',
 			'post_status' => '',
 			'post_type' => '',
-			'status' => '',
+			'status' => 'all',
 			'type' => '',
+			'type__in' => '',
+			'type__not_in' => '',
 			'user_id' => '',
 			'search' => '',
 			'count' => false,
@@ -328,19 +357,83 @@ class WP_Comment_Query {
 			return $cache;
 		}
 
-		$status = $this->query_vars['status'];
-		if ( 'hold' == $status ) {
-			$approved = "comment_approved = '0'";
-		} elseif ( 'approve' == $status ) {
-			$approved = "comment_approved = '1'";
-		} elseif ( ! empty( $status ) && 'all' != $status ) {
-			$approved = $wpdb->prepare( "comment_approved = %s", $status );
-		} else {
-			$approved = "( comment_approved = '0' OR comment_approved = '1' )";
+		$where = array();
+
+		// Assemble clauses related to 'comment_approved'.
+		$approved_clauses = array();
+
+		// 'status' accepts an array or a comma-separated string.
+		$status_clauses = array();
+		$statuses = $this->query_vars['status'];
+		if ( ! is_array( $statuses ) ) {
+			$statuses = preg_split( '/[\s,]+/', $statuses );
 		}
+
+		// 'any' overrides other statuses.
+		if ( ! in_array( 'any', $statuses ) ) {
+			foreach ( $statuses as $status ) {
+				switch ( $status ) {
+					case 'hold' :
+						$status_clauses[] = "comment_approved = '0'";
+						break;
+
+					case 'approve' :
+						$status_clauses[] = "comment_approved = '1'";
+						break;
+
+					case 'all' :
+					case '' :
+						$status_clauses[] = "( comment_approved = '0' OR comment_approved = '1' )";
+						break;
+
+					default :
+						$status_clauses[] = $wpdb->prepare( "comment_approved = %s", $status );
+						break;
+				}
+			}
+
+			if ( ! empty( $status_clauses ) ) {
+				$approved_clauses[] = '( ' . implode( ' OR ', $status_clauses ) . ' )';
+			}
+		}
+
+		// User IDs or emails whose unapproved comments are included, regardless of $status.
+		if ( ! empty( $this->query_vars['include_unapproved'] ) ) {
+			$include_unapproved = $this->query_vars['include_unapproved'];
+
+			// Accepts arrays or comma-separated strings.
+			if ( ! is_array( $include_unapproved ) ) {
+				$include_unapproved = preg_split( '/[\s,]+/', $include_unapproved );
+			}
+
+			$unapproved_ids = $unapproved_emails = array();
+			foreach ( $include_unapproved as $unapproved_identifier ) {
+				// Numeric values are assumed to be user ids.
+				if ( is_numeric( $unapproved_identifier ) ) {
+					$approved_clauses[] = $wpdb->prepare( "( user_id = %d AND comment_approved = '0' )", $unapproved_identifier );
+
+				// Otherwise we match against email addresses.
+				} else {
+					$approved_clauses[] = $wpdb->prepare( "( comment_author_email = %s AND comment_approved = '0' )", $unapproved_identifier );
+				}
+			}
+		}
+
+		// Collapse comment_approved clauses into a single OR-separated clause.
+		if ( ! empty( $approved_clauses ) ) {
+			if ( 1 === count( $approved_clauses ) ) {
+				$where[] = $approved_clauses[0];
+			} else {
+				$where[] = '( ' . implode( ' OR ', $approved_clauses ) . ' )';
+			}
+		}
+
 		$order = ( 'ASC' == strtoupper( $this->query_vars['order'] ) ) ? 'ASC' : 'DESC';
 
-		if ( ! empty( $this->query_vars['orderby'] ) ) {
+		// Disable ORDER BY with 'none', an empty array, or boolean false.
+		if ( in_array( $this->query_vars['orderby'], array( 'none', array(), false ), true ) ) {
+			$orderby = '';
+		} else if ( ! empty( $this->query_vars['orderby'] ) ) {
 			$ordersby = is_array( $this->query_vars['orderby'] ) ?
 				$this->query_vars['orderby'] :
 				preg_split( '/[,\s]/', $this->query_vars['orderby'] );
@@ -407,87 +500,156 @@ class WP_Comment_Query {
 		}
 
 		$join = '';
-		$where = $approved;
 
 		$post_id = absint( $this->query_vars['post_id'] );
 		if ( ! empty( $post_id ) ) {
-			$where .= $wpdb->prepare( ' AND comment_post_ID = %d', $post_id );
+			$where[] = $wpdb->prepare( 'comment_post_ID = %d', $post_id );
 		}
 
 		// Parse comment IDs for an IN clause.
 		if ( ! empty( $this->query_vars['comment__in'] ) ) {
-			$where .= ' AND comment_ID IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['comment__in'] ) ) . ' )';
+			$where[] = 'comment_ID IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['comment__in'] ) ) . ' )';
 		}
 
 		// Parse comment IDs for a NOT IN clause.
 		if ( ! empty( $this->query_vars['comment__not_in'] ) ) {
-			$where .= ' AND comment_ID NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['comment__not_in'] ) ) . ' )';
+			$where[] = 'comment_ID NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['comment__not_in'] ) ) . ' )';
 		}
 
 		// Parse comment post IDs for an IN clause.
 		if ( ! empty( $this->query_vars['post__in'] ) ) {
-			$where .= ' AND comment_post_ID IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post__in'] ) ) . ' )';
+			$where[] = 'comment_post_ID IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post__in'] ) ) . ' )';
 		}
 
 		// Parse comment post IDs for a NOT IN clause.
 		if ( ! empty( $this->query_vars['post__not_in'] ) ) {
-			$where .= ' AND comment_post_ID NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post__not_in'] ) ) . ' )';
+			$where[] = 'comment_post_ID NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post__not_in'] ) ) . ' )';
 		}
 
 		if ( '' !== $this->query_vars['author_email'] ) {
-			$where .= $wpdb->prepare( ' AND comment_author_email = %s', $this->query_vars['author_email'] );
+			$where[] = $wpdb->prepare( 'comment_author_email = %s', $this->query_vars['author_email'] );
 		}
 
 		if ( '' !== $this->query_vars['karma'] ) {
-			$where .= $wpdb->prepare( ' AND comment_karma = %d', $this->query_vars['karma'] );
+			$where[] = $wpdb->prepare( 'comment_karma = %d', $this->query_vars['karma'] );
 		}
 
-		if ( 'comment' == $this->query_vars['type'] ) {
-			$where .= " AND comment_type = ''";
-		} elseif( 'pings' == $this->query_vars['type'] ) {
-			$where .= ' AND comment_type IN ("pingback", "trackback")';
-		} elseif ( ! empty( $this->query_vars['type'] ) ) {
-			$where .= $wpdb->prepare( ' AND comment_type = %s', $this->query_vars['type'] );
+		// Filtering by comment_type: 'type', 'type__in', 'type__not_in'.
+		$raw_types = array(
+			'IN' => array_merge( (array) $this->query_vars['type'], (array) $this->query_vars['type__in'] ),
+			'NOT IN' => (array) $this->query_vars['type__not_in'],
+		);
+
+		$comment_types = array();
+		foreach ( $raw_types as $operator => $_raw_types ) {
+			$_raw_types = array_unique( $_raw_types );
+
+			foreach ( $_raw_types as $type ) {
+				switch ( $type ) {
+					// An empty translates to 'all', for backward compatibility
+					case '':
+					case 'all' :
+						break;
+
+					case 'comment':
+					case 'comments':
+						$comment_types[ $operator ][] = "''";
+						break;
+
+					case 'pings':
+						$comment_types[ $operator ][] = "'pingback'";
+						$comment_types[ $operator ][] = "'trackback'";
+						break;
+
+					default:
+						$comment_types[ $operator ][] = $wpdb->prepare( '%s', $type );
+						break;
+				}
+			}
+
+			if ( ! empty( $comment_types[ $operator ] ) ) {
+				$types_sql = implode( ', ', $comment_types[ $operator ] );
+				$where[] = "comment_type $operator ($types_sql)";
+			}
 		}
 
 		if ( '' !== $this->query_vars['parent'] ) {
-			$where .= $wpdb->prepare( ' AND comment_parent = %d', $this->query_vars['parent'] );
+			$where[] = $wpdb->prepare( 'comment_parent = %d', $this->query_vars['parent'] );
 		}
 
 		if ( is_array( $this->query_vars['user_id'] ) ) {
-			$where .= ' AND user_id IN (' . implode( ',', array_map( 'absint', $this->query_vars['user_id'] ) ) . ')';
+			$where[] = 'user_id IN (' . implode( ',', array_map( 'absint', $this->query_vars['user_id'] ) ) . ')';
 		} elseif ( '' !== $this->query_vars['user_id'] ) {
-			$where .= $wpdb->prepare( ' AND user_id = %d', $this->query_vars['user_id'] );
+			$where[] = $wpdb->prepare( 'user_id = %d', $this->query_vars['user_id'] );
 		}
 
 		if ( '' !== $this->query_vars['search'] ) {
-			$where .= $this->get_search_sql(
+			$search_sql = $this->get_search_sql(
 				$this->query_vars['search'],
 				array( 'comment_author', 'comment_author_email', 'comment_author_url', 'comment_author_IP', 'comment_content' )
 			);
+
+			// Strip leading 'AND'.
+			$where[] = preg_replace( '/^\s*AND\s*/', '', $search_sql );
 		}
 
+		// If any post-related query vars are passed, join the posts table.
+		$join_posts_table = false;
 		$plucked = wp_array_slice_assoc( $this->query_vars, array( 'post_author', 'post_name', 'post_parent', 'post_status', 'post_type' ) );
 		$post_fields = array_filter( $plucked );
 
 		if ( ! empty( $post_fields ) ) {
+			$join_posts_table = true;
+			foreach ( $post_fields as $field_name => $field_value ) {
+				$where[] = $wpdb->prepare( " {$wpdb->posts}.{$field_name} = %s", $field_value );
+			}
+		}
+
+		// Comment author IDs for an IN clause.
+		if ( ! empty( $this->query_vars['author__in'] ) ) {
+			$where[] = 'user_id IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['author__in'] ) ) . ' )';
+		}
+
+		// Comment author IDs for a NOT IN clause.
+		if ( ! empty( $this->query_vars['author__not_in'] ) ) {
+			$where[] = 'user_id NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['author__not_in'] ) ) . ' )';
+		}
+
+		// Post author IDs for an IN clause.
+		if ( ! empty( $this->query_vars['post_author__in'] ) ) {
+			$join_posts_table = true;
+			$where[] = 'post_author IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post_author__in'] ) ) . ' )';
+		}
+
+		// Post author IDs for a NOT IN clause.
+		if ( ! empty( $this->query_vars['post_author__not_in'] ) ) {
+			$join_posts_table = true;
+			$where[] = 'post_author NOT IN ( ' . implode( ',', wp_parse_id_list( $this->query_vars['post_author__not_in'] ) ) . ' )';
+		}
+
+		if ( $join_posts_table ) {
 			$join = "JOIN $wpdb->posts ON $wpdb->posts.ID = $wpdb->comments.comment_post_ID";
-			foreach( $post_fields as $field_name => $field_value )
-				$where .= $wpdb->prepare( " AND {$wpdb->posts}.{$field_name} = %s", $field_value );
 		}
 
 		if ( ! empty( $this->meta_query->queries ) ) {
 			$clauses = $this->meta_query->get_sql( 'comment', $wpdb->comments, 'comment_ID', $this );
 			$join .= $clauses['join'];
-			$where .= $clauses['where'];
-			$groupby = "{$wpdb->comments}.comment_ID";
+
+			// Strip leading 'AND'.
+			$where[] = preg_replace( '/^\s*AND\s*/', '', $clauses['where'] );
+
+			if ( ! $this->query_vars['count'] ) {
+				$groupby = "{$wpdb->comments}.comment_ID";
+			}
 		}
 
 		$date_query = $this->query_vars['date_query'];
 		if ( ! empty( $date_query ) && is_array( $date_query ) ) {
 			$date_query_object = new WP_Date_Query( $date_query, 'comment_date' );
-			$where .= $date_query_object->get_sql();
+			$where[] = preg_replace( '/^\s*AND\s*/', '', $date_query_object->get_sql() );
 		}
+
+		$where = implode( ' AND ', $where );
 
 		$pieces = array( 'fields', 'join', 'where', 'orderby', 'order', 'limits', 'groupby' );
 		/**
@@ -508,21 +670,30 @@ class WP_Comment_Query {
 		$limits = isset( $clauses[ 'limits' ] ) ? $clauses[ 'limits' ] : '';
 		$groupby = isset( $clauses[ 'groupby' ] ) ? $clauses[ 'groupby' ] : '';
 
+		if ( $where ) {
+			$where = 'WHERE ' . $where;
+		}
+
 		if ( $groupby ) {
 			$groupby = 'GROUP BY ' . $groupby;
 		}
-		$query = "SELECT $fields FROM $wpdb->comments $join WHERE $where $groupby ORDER BY $orderby $order $limits";
+
+		if ( $orderby ) {
+			$orderby = "ORDER BY $orderby $order";
+		}
+
+		$this->request = "SELECT $fields FROM $wpdb->comments $join $where $groupby $orderby $limits";
 
 		if ( $this->query_vars['count'] ) {
-			return $wpdb->get_var( $query );
+			return $wpdb->get_var( $this->request );
 		}
 
 		if ( 'ids' == $this->query_vars['fields'] ) {
-			$this->comments = $wpdb->get_col( $query );
+			$this->comments = $wpdb->get_col( $this->request );
 			return array_map( 'intval', $this->comments );
 		}
 
-		$results = $wpdb->get_results( $query );
+		$results = $wpdb->get_results( $this->request );
 		/**
 		 * Filter the comment query results.
 		 *
@@ -588,7 +759,8 @@ function get_comment_statuses() {
  * The date the last comment was modified.
  *
  * @since 1.5.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param string $timezone Which timezone to use in reference to 'gmt', 'blog',
  *		or 'server' locations.
@@ -628,7 +800,8 @@ function get_lastcommentmodified($timezone = 'server') {
  * caches, but this function does not.
  *
  * @since 2.0.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param int $post_id Optional. Comment amount in post if > 0, else total comments blog wide.
  * @return array The amount of spam, approved, awaiting moderation, and total comments.
@@ -687,7 +860,6 @@ function get_comment_count( $post_id = 0 ) {
  * Add meta data field to a comment.
  *
  * @since 2.9.0
- * @uses add_metadata
  * @link http://codex.wordpress.org/Function_Reference/add_comment_meta
  *
  * @param int $comment_id Comment ID.
@@ -708,7 +880,6 @@ function add_comment_meta($comment_id, $meta_key, $meta_value, $unique = false) 
  * allows removing all metadata matching key, if needed.
  *
  * @since 2.9.0
- * @uses delete_metadata
  * @link http://codex.wordpress.org/Function_Reference/delete_comment_meta
  *
  * @param int $comment_id comment ID
@@ -724,7 +895,6 @@ function delete_comment_meta($comment_id, $meta_key, $meta_value = '') {
  * Retrieve comment meta field for a comment.
  *
  * @since 2.9.0
- * @uses get_metadata
  * @link http://codex.wordpress.org/Function_Reference/get_comment_meta
  *
  * @param int $comment_id Comment ID.
@@ -746,7 +916,6 @@ function get_comment_meta($comment_id, $key = '', $single = false) {
  * If the meta field for the comment does not exist, it will be added.
  *
  * @since 2.9.0
- * @uses update_metadata
  * @link http://codex.wordpress.org/Function_Reference/update_comment_meta
  *
  * @param int $comment_id Comment ID.
@@ -850,7 +1019,8 @@ function sanitize_comment_cookies() {
  * Validates whether this comment is allowed to be made.
  *
  * @since 2.0.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param array $commentdata Contains information on the comment
  * @return mixed Signifies the approval status (0|1|'spam')
@@ -967,7 +1137,8 @@ function wp_allow_comment( $commentdata ) {
  * administrators.
  *
  * @since 2.3.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param string $ip Comment IP.
  * @param string $email Comment author email address.
@@ -1084,9 +1255,6 @@ function get_comment_pages_count( $comments = null, $per_page = null, $threaded 
  * Calculate what page number a comment will appear on for comment paging.
  *
  * @since 2.7.0
- * @uses get_comment() Gets the full comment of the $comment_ID parameter.
- * @uses get_option() Get various settings to control function and defaults.
- * @uses get_page_of_comment() Used to loop up to top level comment.
  *
  * @param int $comment_ID Comment ID.
  * @param array $args Optional args.
@@ -1273,8 +1441,8 @@ function wp_count_comments( $post_id = 0 ) {
  * post ID available.
  *
  * @since 2.0.0
- * @uses $wpdb
- * @uses wp_transition_comment_status() Passes new and old comment status along with $comment object
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param int $comment_id Comment ID
  * @param bool $force_delete Whether to bypass trash and force deletion. Default is false.
@@ -1340,8 +1508,6 @@ function wp_delete_comment($comment_id, $force_delete = false) {
  * If trash is disabled, comment is permanently deleted.
  *
  * @since 2.9.0
- *
- * @uses wp_delete_comment() if trash is disabled
  *
  * @param int $comment_id Comment ID.
  * @return bool True on success, false on failure.
@@ -1651,7 +1817,8 @@ function wp_get_current_commenter() {
  * 'comment_date_gmt', 'comment_parent', 'comment_approved', and 'user_id'.
  *
  * @since 2.0.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param array $commentdata Contains information on the comment.
  * @return int|bool The new comment's ID on success, false on failure.
@@ -1877,7 +2044,6 @@ function wp_new_comment( $commentdata ) {
  * If the comment status is not in the list, then false is returned.
  *
  * @since 1.0.0
- * @uses wp_transition_comment_status() Passes new and old comment status along with $comment object
  *
  * @param int $comment_id Comment ID.
  * @param string $comment_status New comment status, either 'hold', 'approve', 'spam', or 'trash'.
@@ -1947,8 +2113,8 @@ function wp_set_comment_status($comment_id, $comment_status, $wp_error = false) 
  * Filters the comment and makes sure certain fields are valid before updating.
  *
  * @since 2.0.0
- * @uses $wpdb
- * @uses wp_transition_comment_status() Passes new and old comment status along with $comment object
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param array $commentarr Contains information on the comment.
  * @return int Comment was updated if value is 1, or was not updated if value is 0.
@@ -2086,7 +2252,8 @@ function wp_update_comment_count($post_id, $do_deferred=false) {
  * Updates the comment count for the post.
  *
  * @since 2.5.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param int $post_id Post ID
  * @return bool True on success, false on '0' $post_id or if post with ID does not exist.
@@ -2200,7 +2367,8 @@ function discover_pingback_server_uri( $url, $deprecated = '' ) {
  * Perform all pingbacks, enclosures, trackbacks, and send to pingback services.
  *
  * @since 2.1.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  */
 function do_all_pings() {
 	global $wpdb;
@@ -2231,7 +2399,8 @@ function do_all_pings() {
  * Perform trackbacks.
  *
  * @since 1.5.0
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param int $post_id Post ID to do trackbacks on.
  */
@@ -2300,7 +2469,6 @@ function generic_ping( $post_id = 0 ) {
  *
  * @since 0.71
  * @uses $wp_version
- * @uses IXR_Client
  *
  * @param string $content Post content to check for links.
  * @param int $post_ID Post ID.
@@ -2406,7 +2574,8 @@ function privacy_ping_filter($sites) {
  * Updates database when sending trackback to prevent duplicates.
  *
  * @since 0.71
- * @uses $wpdb
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param string $trackback_url URL to send trackbacks.
  * @param string $title Title of post.
@@ -2443,7 +2612,6 @@ function trackback($trackback_url, $title, $excerpt, $ID) {
  *
  * @since 1.2.0
  * @uses $wp_version
- * @uses IXR_Client
  *
  * @param string $server Host of blog to connect to.
  * @param string $path Path to send the ping.

@@ -54,6 +54,13 @@ final class WP_Customize_Manager {
 	protected $customized;
 
 	/**
+	 * Controls that may be rendered from JS templates.
+	 *
+	 * @since 4.1.0
+	 */
+	protected $registered_control_types = array();
+
+	/** 
 	 * $_POST values for Customize Settings.
 	 *
 	 * @var array
@@ -491,6 +498,8 @@ final class WP_Customize_Manager {
 		$settings = array(
 			'values'  => array(),
 			'channel' => wp_unslash( $_POST['customize_messenger_channel'] ),
+			'activePanels' => array(),
+			'activeSections' => array(),
 			'activeControls' => array(),
 		);
 
@@ -504,13 +513,19 @@ final class WP_Customize_Manager {
 		foreach ( $this->settings as $id => $setting ) {
 			$settings['values'][ $id ] = $setting->js_value();
 		}
+		foreach ( $this->panels as $id => $panel ) {
+			$settings['activePanels'][ $id ] = $panel->active();
+		}
+		foreach ( $this->sections as $id => $section ) {
+			$settings['activeSections'][ $id ] = $section->active();
+		}
 		foreach ( $this->controls as $id => $control ) {
 			$settings['activeControls'][ $id ] = $control->active();
 		}
 
 		?>
 		<script type="text/javascript">
-			var _wpCustomizeSettings = <?php echo json_encode( $settings ); ?>;
+			var _wpCustomizeSettings = <?php echo wp_json_encode( $settings ); ?>;
 		</script>
 		<?php
 	}
@@ -822,6 +837,32 @@ final class WP_Customize_Manager {
 	}
 
 	/**
+	 * Register a customize control type.
+	 *
+	 * Registered types are eligible to be rendered
+	 * via JS and created dynamically.
+	 *
+	 * @since 4.1.0
+	 *
+	 * @param string $control Name of a custom control which is a subclass of {@see WP_Customize_Control}.
+	 */
+	public function register_control_type( $control ) {
+		$this->registered_control_types[] = $control;
+	}
+
+	/**
+	 * Render JS templates for all registered control types.
+	 *
+	 * @since 4.1.0
+	 */
+	public function render_control_templates() {
+		foreach( $this->registered_control_types as $control_type ) {
+			$control = new $control_type( $this, 'temp', array() );
+			$control->print_template();
+		}
+	}
+
+    /** 
 	 * Helper function to compare two objects by priority.
 	 *
 	 * @since 3.4.0
@@ -878,11 +919,11 @@ final class WP_Customize_Manager {
 
 			if ( ! $section->panel ) {
 				// Top-level section.
-				$sections[] = $section;
+				$sections[ $section->id ] = $section;
 			} else {
 				// This section belongs to a panel.
 				if ( isset( $this->panels [ $section->panel ] ) ) {
-					$this->panels[ $section->panel ]->sections[] = $section;
+					$this->panels[ $section->panel ]->sections[ $section->id ] = $section;
 				}
 			}
 		}
@@ -899,8 +940,8 @@ final class WP_Customize_Manager {
 				continue;
 			}
 
-			usort( $panel->sections, array( $this, '_cmp_priority' ) );
-			$panels[] = $panel;
+			uasort( $panel->sections, array( $this, '_cmp_priority' ) );
+			$panels[ $panel->id ] = $panel;
 		}
 		$this->panels = $panels;
 
@@ -926,6 +967,9 @@ final class WP_Customize_Manager {
 	 * @since 3.4.0
 	 */
 	public function register_controls() {
+
+		/* Control Types (custom control classes) */
+		$this->register_control_type( 'WP_Customize_Color_Control' );
 
 		/* Site Title & Tagline */
 
@@ -1239,7 +1283,6 @@ function sanitize_hex_color( $color ) {
  * Returns either '', a 3 or 6 digit hex color (without a #), or null.
  *
  * @since 3.4.0
- * @uses sanitize_hex_color()
  *
  * @param string $color
  * @return string|null

@@ -17,8 +17,6 @@
  *
  * @since 1.5.0
  *
- * @uses locate_template()
- *
  * @param string $name The name of the specialised header.
  */
 function get_header( $name = null ) {
@@ -59,8 +57,6 @@ function get_header( $name = null ) {
  *
  * @since 1.5.0
  *
- * @uses locate_template()
- *
  * @param string $name The name of the specialised footer.
  */
 function get_footer( $name = null ) {
@@ -100,8 +96,6 @@ function get_footer( $name = null ) {
  * "special".
  *
  * @since 1.5.0
- *
- * @uses locate_template()
  *
  * @param string $name The name of the specialised sidebar.
  */
@@ -149,8 +143,6 @@ function get_sidebar( $name = null ) {
  * "special".
  *
  * @since 3.0.0
- *
- * @uses locate_template()
  *
  * @param string $slug The slug name for the generic template.
  * @param string $name The name of the specialised template.
@@ -307,9 +299,6 @@ function wp_loginout($redirect = '', $echo = true) {
  *
  * @since 2.7.0
  *
- * @uses wp_nonce_url() To protect against CSRF.
- * @uses site_url() To generate the log out URL.
- *
  * @param string $redirect Path to redirect to on logout.
  * @return string A log out URL.
  */
@@ -339,8 +328,6 @@ function wp_logout_url($redirect = '') {
  * Returns the URL that allows the user to log in to the site.
  *
  * @since 2.7.0
- *
- * @uses site_url() To generate the log in URL.
  *
  * @param string $redirect Path to redirect to on login.
  * @param bool $force_reauth Whether to force reauthorization, even if a cookie is present. Default is false.
@@ -372,8 +359,6 @@ function wp_login_url($redirect = '', $force_reauth = false) {
  * Returns the URL that allows the user to register on the site.
  *
  * @since 3.6.0
- *
- * @uses site_url() To generate the registration URL.
  *
  * @return string User registration URL.
  */
@@ -495,8 +480,6 @@ function wp_login_form( $args = array() ) {
  * Returns the URL that allows the user to retrieve the lost password
  *
  * @since 2.8.0
- *
- * @uses site_url() To generate the lost password URL
  *
  * @param string $redirect Path to redirect to on login.
  * @return string Lost password URL.
@@ -731,6 +714,25 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
 }
 
 /**
+ * Display <title> tag with contents.
+ *
+ * @since 4.1.0
+ * @access private
+ */
+function _wp_render_title_tag() {
+	if ( ! current_theme_supports( 'title-tag' ) ) {
+		return;
+	}
+
+	// This can only work internally on wp_head.
+	if ( ! did_action( 'wp_head' ) && ! doing_action( 'wp_head' ) ) {
+		return;
+	}
+
+	echo '<title>' . wp_title( '|', false, 'right' ) . "</title>\n";
+}
+
+/**
  * Display or retrieve page title for all areas of blog.
  *
  * By default, the page title will display the separator before the page title,
@@ -753,7 +755,7 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
  * @return string|null String on retrieve, null when displaying.
  */
 function wp_title($sep = '&raquo;', $display = true, $seplocation = '') {
-	global $wp_locale;
+	global $wp_locale, $page, $paged;
 
 	$m = get_query_var('m');
 	$year = get_query_var('year');
@@ -851,6 +853,19 @@ function wp_title($sep = '&raquo;', $display = true, $seplocation = '') {
 		$title = implode( " $sep ", $title_array ) . $prefix;
 	} else {
 		$title = $prefix . implode( " $sep ", $title_array );
+	}
+
+	if ( current_theme_supports( 'title-tag' ) && ! is_feed() ) {
+		$title .= get_bloginfo( 'name', 'display' );
+
+		$site_description = get_bloginfo( 'description', 'display' );
+		if ( $site_description && ( is_home() || is_front_page() ) ) {
+			$title .= " $sep $site_description";
+		}
+
+		if ( ( $paged >= 2 || $page >= 2 ) && ! is_404() ) {
+			$title .= " $sep " . sprintf( __( 'Page %s' ), max( $paged, $page ) );
+		}
 	}
 
 	/**
@@ -1397,7 +1412,6 @@ function calendar_week_mod($num) {
  * no posts for the month, then it will not be displayed.
  *
  * @since 1.0.0
- * @uses calendar_week_mod()
  *
  * @param bool $initial Optional, default is true. Use initial calendar names.
  * @param bool $echo Optional, default is true. Set to false for return.
@@ -1679,7 +1693,6 @@ function the_date_xml() {
  *
  * @since 0.71
  *
- * @uses get_the_date()
  * @param string $d Optional. PHP date format defaults to the date_format option if not specified.
  * @param string $before Optional. Output before the date.
  * @param string $after Optional. Output after the date.
@@ -2000,7 +2013,6 @@ function get_post_modified_time( $d = 'U', $gmt = false, $post = null, $translat
  *
  * @since 0.71
  * @uses $wp_locale
- * @uses $post
  */
 function the_weekday() {
 	global $wp_locale;
@@ -2326,7 +2338,6 @@ function wp_editor( $content, $editor_id, $settings = array() ) {
  * to ensure that it is safe for placing in an html attribute.
  *
  * @since 2.3.0
- * @uses esc_attr()
  *
  * @param bool $escaped Whether the result is escaped. Default true.
  * 	Only use when you are later escaping it. Do not use unescaped.
@@ -2353,7 +2364,6 @@ function get_search_query( $escaped = true ) {
  * The search query string is passed through {@link esc_attr()}
  * to ensure that it is safe for placing in an html attribute.
  *
- * @uses esc_attr()
  * @since 2.1.0
  */
 function the_search_query() {
@@ -2465,6 +2475,7 @@ function paginate_links( $args = '' ) {
 
 	if ( isset( $url_parts[1] ) ) {
 		wp_parse_str( $url_parts[1], $query_args );
+		$query_args = urlencode_deep( $query_args );
 	}
 
 	$pagenum_link = remove_query_arg( array_keys( $query_args ), $pagenum_link );
