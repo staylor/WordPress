@@ -2,7 +2,10 @@
 var wpLink;
 
 ( function( $ ) {
-	var inputs = {}, rivers = {}, editor, searchTimer, River, Query;
+	var editor, searchTimer, River, Query,
+		inputs = {},
+		rivers = {},
+		isTouch = ( 'ontouchend' in document );
 
 	wpLink = {
 		timeToTriggerRiver: 150,
@@ -31,6 +34,11 @@ var wpLink;
 			rivers.recent = new River( $( '#most-recent-results' ) );
 			rivers.elements = inputs.dialog.find( '.query-results' );
 
+			// Get search notice text
+			inputs.queryNotice = $( '#query-notice-message' );
+			inputs.queryNoticeTextDefault = inputs.queryNotice.find( '.query-notice-default' );
+			inputs.queryNoticeTextHint = inputs.queryNotice.find( '.query-notice-hint' );
+
 			// Bind event handlers
 			inputs.dialog.keydown( wpLink.keydown );
 			inputs.dialog.keyup( wpLink.keyup );
@@ -43,9 +51,18 @@ var wpLink;
 				wpLink.close();
 			});
 
-			$( '#wp-link-search-toggle' ).click( wpLink.toggleInternalLinking );
+			$( '#wp-link-search-toggle' ).on( 'click', wpLink.toggleInternalLinking );
 
 			rivers.elements.on( 'river-select', wpLink.updateFields );
+
+			// Display 'hint' message when search field or 'query-results' box are focused
+			inputs.search.on( 'focus.wplink', function() {
+				inputs.queryNoticeTextDefault.hide();
+				inputs.queryNoticeTextHint.removeClass( 'screen-reader-text' ).show();
+			} ).on( 'blur.wplink', function() {
+				inputs.queryNoticeTextDefault.show();
+				inputs.queryNoticeTextHint.addClass( 'screen-reader-text' ).hide();
+			} );
 
 			inputs.search.keyup( function() {
 				var self = this;
@@ -95,6 +112,7 @@ var wpLink;
 			inputs.backdrop.show();
 
 			wpLink.refresh();
+			$( document ).trigger( 'wplink-open', inputs.wrap );
 		},
 
 		isMCE: function() {
@@ -106,18 +124,26 @@ var wpLink;
 			rivers.search.refresh();
 			rivers.recent.refresh();
 
-			if ( wpLink.isMCE() )
+			if ( wpLink.isMCE() ) {
 				wpLink.mceRefresh();
-			else
+			} else {
 				wpLink.setDefaultValues();
+			}
 
-			// Focus the URL field and highlight its contents.
-			//     If this is moved above the selection changes,
-			//     IE will show a flashing cursor over the dialog.
-			inputs.url.focus()[0].select();
+			if ( isTouch ) {
+				// Close the onscreen keyboard
+				inputs.url.focus().blur();
+			} else {
+				// Focus the URL field and highlight its contents.
+				// If this is moved above the selection changes,
+				// IE will show a flashing cursor over the dialog.
+				inputs.url.focus()[0].select();
+			}
+
 			// Load the most recent results if this is the first time opening the panel.
-			if ( ! rivers.recent.ul.children().length )
+			if ( ! rivers.recent.ul.children().length ) {
 				rivers.recent.ajax();
+			}
 		},
 
 		mceRefresh: function() {
@@ -153,6 +179,7 @@ var wpLink;
 
 			inputs.backdrop.hide();
 			inputs.wrap.hide();
+			$( document ).trigger( 'wplink-close', inputs.wrap );
 		},
 
 		getAttrs: function() {
@@ -260,22 +287,22 @@ var wpLink;
 			editor.selection.collapse();
 		},
 
-		updateFields: function( e, li, originalEvent ) {
+		updateFields: function( e, li ) {
 			inputs.url.val( li.children( '.item-permalink' ).val() );
 			inputs.title.val( li.hasClass( 'no-title' ) ? '' : li.children( '.item-title' ).text() );
-			if ( originalEvent && originalEvent.type == 'click' )
-				inputs.url.focus();
 		},
 
 		setDefaultValues: function() {
-			var selection = tinymce.activeEditor.selection.getContent();
+			var selection = editor && editor.selection.getContent(),
+				emailRegexp = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
+				urlRegexp = /^(https?|ftp):\/\/[A-Z0-9.-]+\.[A-Z]{2,4}[^ "]*$/i;
 
-			if ( /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))$/i.test(selection) ) {
+			if ( selection && emailRegexp.test( selection ) ) {
 				// Selection is email address
 				inputs.url.val( 'mailto:' + selection );
-			} else if ( /^(https?|ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test( selection ) ) {
+			} else if ( selection && urlRegexp.test( selection ) ) {
 				// Selection is URL
-				inputs.url.val( selection );
+				inputs.url.val( selection.replace( /&amp;|&#0?38;/gi, '&' ) );
 			} else {
 				// Set URL to default.
 				inputs.url.val( 'http://' );
@@ -333,6 +360,8 @@ var wpLink;
 			} else if ( key.TAB === event.keyCode ) {
 				id = event.target.id;
 
+				// wp-link-submit must always be the last focusable element in the dialog.
+				// following focusable elements will be skipped on keyboard navigation.
 				if ( id === 'wp-link-submit' && ! event.shiftKey ) {
 					inputs.close.focus();
 					event.preventDefault();
@@ -343,6 +372,11 @@ var wpLink;
 			}
 
 			if ( event.keyCode !== key.UP && event.keyCode !== key.DOWN ) {
+				return;
+			}
+
+			if ( document.activeElement &&
+				( document.activeElement.id === 'link-title-field' || document.activeElement.id === 'url-field' ) ) {
 				return;
 			}
 
@@ -385,12 +419,13 @@ var wpLink;
 			};
 		},
 
-		toggleInternalLinking: function() {
+		toggleInternalLinking: function( event ) {
 			var visible = inputs.wrap.hasClass( 'search-panel-visible' );
 
 			inputs.wrap.toggleClass( 'search-panel-visible', ! visible );
 			setUserSetting( 'wplink', visible ? '0' : '1' );
 			inputs[ ! visible ? 'search' : 'url' ].focus();
+			event.preventDefault();
 		}
 	};
 
@@ -500,7 +535,7 @@ var wpLink;
 
 			if ( ! results ) {
 				if ( firstPage ) {
-					list += '<li class="unselectable"><span class="item-title"><em>' +
+					list += '<li class="unselectable no-matches-found"><span class="item-title"><em>' +
 						wpLinkL10n.noMatchesFound + '</em></span></li>';
 				}
 			} else {
