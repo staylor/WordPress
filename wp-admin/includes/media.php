@@ -864,7 +864,7 @@ function media_sideload_image( $file, $post_id, $desc = null ) {
  *
  * @since 2.5.0
  *
- * @return unknown
+ * @return string|null
  */
 function media_upload_gallery() {
 	$errors = array();
@@ -887,7 +887,7 @@ function media_upload_gallery() {
  *
  * @since 2.5.0
  *
- * @return unknown
+ * @return string|null
  */
 function media_upload_library() {
 	$errors = array();
@@ -1712,7 +1712,7 @@ function media_upload_header() {
  *
  * @since 2.5.0
  *
- * @param unknown_type $errors
+ * @param array $errors
  */
 function media_upload_form( $errors = null ) {
 	global $type, $tab, $is_IE, $is_opera;
