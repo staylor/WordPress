@@ -1,18 +1,59 @@
-imports:
-    - php
-    
+inherit: true
+filter:
+    excluded_paths:
+        - wp-includes/ID3/*
+        - wp-includes/SimplePie/*
+        - wp-includes/Text/*
+        - wp-includes/atomlib.php
+        - wp-includes/class-IXR.php
+        - wp-includes/class-json.php
+        - wp-includes/class-phpass.php
+        - wp-includes/class-phpmailer.php
+        - wp-includes/class-pop3.php
+        - wp-includes/class-simplepie.php
+        - wp-includes/class-smtp.php
+        - wp-includes/class-snoopy.php
+        - wp-includes/rss.php
+        - wp-admin/includes/class-ftp-pure.php
+        - wp-admin/includes/class-ftp-sockets.php
+        - wp-admin/includes/class-ftp.php
+        - wp-admin/includes/class-pclzip.php
+    paths: {  }
 tools:
-    # php_changetracking: true 
-    # php_sim:
-    #    min_mass: 30
-    # php_code_sniffer:
-    #     config:
-    #         standard: "WordPress" 
-    # php_cpd: true
-    php_hhvm: 
-        filter:
-            excluded_paths: ["src/wp-admin/includes/class-ftp*", "src/wp-admin/includes/class-pclzip.php", "src/wp-content/*", "src/wp-includes/ID3/*", "src/wp-includes/SimplePie/*", "src/wp-includes/Text/*", "src/wp-includes/atomlib.php", "src/wp-includes/class-IXR.php", "src/wp-includes/class-json.php", "src/wp-includes/class-phpass.php", "src/wp-includes/class-phpmailer.php", "src/wp-includes/class-pop3.php", "src/wp-includes/class-smtp.php", "src/wp-includes/class-snoopy.php", "src/wp-includes/kses.php", "src/wp-includes/rss.php"]
-    # php_mess_detector: true
-    # php_pdepend: true
-    # php_analyzer: true          
-    
+    php_sim:
+        enabled: true
+        min_mass: 500
+
+    php_pdepend:
+        enabled: true
+        configuration_file: null
+        suffixes:
+            - php
+        excluded_dirs: {  }
+
+    php_analyzer:
+        enabled: true
+        extensions:
+            - php
+        dependency_paths: {  }
+        path_configs: {  }
+
+    php_changetracking:
+        enabled: true
+        bug_patterns:
+            - '\bfix(?:es|ed)?\b'
+        feature_patterns:
+            - '\badd(?:s|ed)?\b'
+            - '\bimplement(?:s|ed)?\b'
+
+    php_hhvm:
+        enabled: true
+        command: hhvm
+        extensions:
+            - php
+
+        path_configs: {  }
+before_commands: {  }
+after_commands: {  }
+artifacts: {  }
+build_failure_conditions: {  }
