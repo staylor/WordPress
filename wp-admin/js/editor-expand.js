@@ -682,7 +682,13 @@
 		}
 
 		function off() {
-			var height = window.getUserSetting('ed_size');
+			var height = parseInt( window.getUserSetting( 'ed_size', 300 ), 10 );
+
+			if ( height < 50 ) {
+				height = 50;
+			} else if ( height > 5000 ) {
+				height = 5000;
+			}
 
 			// Scroll to the top when triggering this from JS.
 			// Ensures toolbars are reset properly.
@@ -803,6 +809,12 @@
 			mouseY = event.pageY;
 		} );
 
+		function recalcEditorRect() {
+			editorRect = $editor.offset();
+			editorRect.right = editorRect.left + $editor.outerWidth();
+			editorRect.bottom = editorRect.top + $editor.outerHeight();
+		}
+
 		function activate() {
 			if ( ! _isActive ) {
 				_isActive = true;
@@ -909,9 +921,7 @@
 				$overlay
 					// Always recalculate the editor area entering the overlay with the mouse.
 					.on( 'mouseenter.focus', function() {
-						editorRect = $editor.offset();
-						editorRect.right = editorRect.left + $editor.outerWidth();
-						editorRect.bottom = editorRect.top + $editor.outerHeight();
+						recalcEditorRect();
 
 						$window.on( 'scroll.focus', function() {
 							var nScrollY = window.pageYOffset;
@@ -937,24 +947,26 @@
 					} )
 					// Fade in when the mouse moves away form the editor area.
 					.on( 'mousemove.focus', function( event ) {
-						var nx = event.pageX,
-							ny = event.pageY;
+						var nx = event.clientX,
+							ny = event.clientY,
+							pageYOffset = window.pageYOffset,
+							pageXOffset = window.pageXOffset;
 
 						if ( x && y && ( nx !== x || ny !== y ) ) {
 							if (
-								( ny <= y && ny < editorRect.top ) ||
-								( ny >= y && ny > editorRect.bottom ) ||
-								( nx <= x && nx < editorRect.left ) ||
-								( nx >= x && nx > editorRect.right )
+								( ny <= y && ny < editorRect.top - pageYOffset ) ||
+								( ny >= y && ny > editorRect.bottom - pageYOffset ) ||
+								( nx <= x && nx < editorRect.left - pageXOffset ) ||
+								( nx >= x && nx > editorRect.right - pageXOffset )
 							) {
 								traveledX += Math.abs( x - nx );
 								traveledY += Math.abs( y - ny );
 
 								if ( (
-									ny <= editorRect.top - buffer ||
-									ny >= editorRect.bottom + buffer ||
-									nx <= editorRect.left - buffer ||
-									nx >= editorRect.right + buffer
+									ny <= editorRect.top - buffer - pageYOffset ||
+									ny >= editorRect.bottom + buffer - pageYOffset ||
+									nx <= editorRect.left - buffer - pageXOffset ||
+									nx >= editorRect.right + buffer - pageXOffset
 								) && (
 									traveledX > 10 ||
 									traveledY > 10
@@ -1123,7 +1135,7 @@
 						button.active( false );
 					} );
 				},
-				tooltip: 'Distraction Free Writing',
+				tooltip: 'Distraction-free writing mode',
 				shortcut: 'Alt+Shift+W'
 			} );
 
@@ -1151,6 +1163,7 @@
 					editor.on( 'blur', maybeFadeIn );
 					editor.on( 'focus', focus );
 					editor.on( 'blur', blur );
+					editor.on( 'wp-autoresize', recalcEditorRect );
 				};
 
 				mceUnbind = function() {
@@ -1158,6 +1171,7 @@
 					editor.off( 'blur', maybeFadeIn );
 					editor.off( 'focus', focus );
 					editor.off( 'blur', blur );
+					editor.off( 'wp-autoresize', recalcEditorRect );
 				};
 
 				if ( _isOn ) {
