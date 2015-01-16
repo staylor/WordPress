@@ -16,8 +16,6 @@
  */
 class WP_Filesystem_FTPext extends WP_Filesystem_Base {
 	public $link;
-	public $errors = null;
-	public $options = array();
 
 	public function __construct($opt='') {
 		$this->method = 'ftpext';
@@ -43,9 +41,6 @@ class WP_Filesystem_FTPext extends WP_Filesystem_Base {
 			$this->errors->add('empty_hostname', __('FTP hostname is required'));
 		else
 			$this->options['hostname'] = $opt['hostname'];
-
-		if ( ! empty($opt['base']) )
-			$this->wp_base = $opt['base'];
 
 		// Check if the options provided are OK.
 		if ( empty($opt['username']) )

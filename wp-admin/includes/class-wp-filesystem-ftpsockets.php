@@ -16,8 +16,6 @@
  */
 class WP_Filesystem_ftpsockets extends WP_Filesystem_Base {
 	public $ftp = false;
-	public $errors = null;
-	public $options = array();
 
 	public function __construct($opt = '') {
 		$this->method = 'ftpsockets';
@@ -38,9 +36,6 @@ class WP_Filesystem_ftpsockets extends WP_Filesystem_Base {
 			$this->errors->add('empty_hostname', __('FTP hostname is required'));
 		else
 			$this->options['hostname'] = $opt['hostname'];
-
-		if ( ! empty($opt['base']) )
-			$this->wp_base = $opt['base'];
 
 		// Check if the options provided are OK.
 		if ( empty ($opt['username']) )
