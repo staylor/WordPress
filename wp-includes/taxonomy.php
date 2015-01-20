@@ -2553,33 +2553,25 @@ function wp_delete_category( $cat_ID ) {
 /**
  * Retrieves the terms associated with the given object(s), in the supplied taxonomies.
  *
- * The following information has to do the $args parameter and for what can be
- * contained in the string or array of that parameter, if it exists.
- *
- * The first argument is called, 'orderby' and has the default value of 'name'.
- * The other value that is supported is 'count'.
- *
- * The second argument is called, 'order' and has the default value of 'ASC'.
- * The only other value that will be acceptable is 'DESC'.
- *
- * The final argument supported is called, 'fields' and has the default value of
- * 'all'. There are multiple other options that can be used instead. Supported
- * values are as follows: 'all', 'ids', 'names', and finally
- * 'all_with_object_id'.
- *
- * The fields argument also decides what will be returned. If 'all' or
- * 'all_with_object_id' is chosen or the default kept intact, then all matching
- * terms objects will be returned. If either 'ids' or 'names' is used, then an
- * array of all matching term ids or term names will be returned respectively.
- *
  * @since 2.3.0
+ * @since 4.2.0 Added support for 'taxonomy', 'parent', and 'term_taxonomy_id' values of `$orderby`.
  *
  * @global wpdb $wpdb WordPress database abstraction object.
  *
- * @param int|array $object_ids The ID(s) of the object(s) to retrieve.
+ * @param int|array    $object_ids The ID(s) of the object(s) to retrieve.
  * @param string|array $taxonomies The taxonomies to retrieve terms from.
- * @param array|string $args Change what is returned
- * @return array|WP_Error The requested term data or empty array if no terms found. WP_Error if any of the $taxonomies don't exist.
+ * @param array|string $args {
+ *     Array of arguments.
+ *     @type string $orderby Field by which results should be sorted. Accepts 'name', 'count', 'slug', 'term_group',
+ *                           'term_order', 'taxonomy', 'parent', or 'term_taxonomy_id'. Default 'name'.
+ *     @type string $order   Sort order. Accepts 'ASC' or 'DESC'. Default 'ASC'.
+ *     @type string $fields  Fields to return for matched terms. Accepts 'all', 'ids', 'names', and
+ *                           'all_with_object_id'. Note that 'all' or 'all_with_object_id' will result in an array of
+ *                           term objects being returned, 'ids' will return an array of integers, and 'names' an array
+ *                           of strings.
+ * }
+ * @return array|WP_Error The requested term data or empty array if no terms found.
+ *                        WP_Error if any of the $taxonomies don't exist.
  */
 function wp_get_object_terms($object_ids, $taxonomies, $args = array()) {
 	global $wpdb;
@@ -2621,17 +2613,13 @@ function wp_get_object_terms($object_ids, $taxonomies, $args = array()) {
 	$order = $args['order'];
 	$fields = $args['fields'];
 
-	if ( 'count' == $orderby ) {
-		$orderby = 'tt.count';
-	} elseif ( 'name' == $orderby ) {
-		$orderby = 't.name';
-	} elseif ( 'slug' == $orderby ) {
-		$orderby = 't.slug';
-	} elseif ( 'term_group' == $orderby ) {
-		$orderby = 't.term_group';
-	} elseif ( 'term_order' == $orderby ) {
+	if ( in_array( $orderby, array( 'term_id', 'name', 'slug', 'term_group' ) ) ) {
+		$orderby = "t.$orderby";
+	} else if ( in_array( $orderby, array( 'count', 'parent', 'taxonomy', 'term_taxonomy_id' ) ) ) {
+		$orderby = "tt.$orderby";
+	} else if ( 'term_order' === $orderby ) {
 		$orderby = 'tr.term_order';
-	} elseif ( 'none' == $orderby ) {
+	} else if ( 'none' === $orderby ) {
 		$orderby = '';
 		$order = '';
 	} else {
@@ -3932,20 +3920,20 @@ function _pad_term_counts(&$terms, $taxonomy) {
 	}
 
 	// Touch every ancestor's lookup row for each post in each term
-	$ancestors = array();
 	foreach ( $term_ids as $term_id ) {
-		$ancestors[] = $term_id;
 		$child = $term_id;
+		$ancestors = array();
 		while ( !empty( $terms_by_id[$child] ) && $parent = $terms_by_id[$child]->parent ) {
-			if ( in_array( $parent, $ancestors ) ) {
-				break;
-			}
-
+			$ancestors[] = $child;
 			if ( !empty( $term_items[$term_id] ) )
 				foreach ( $term_items[$term_id] as $item_id => $touches ) {
 					$term_items[$parent][$item_id] = isset($term_items[$parent][$item_id]) ? ++$term_items[$parent][$item_id]: 1;
 				}
 			$child = $parent;
+
+			if ( in_array( $parent, $ancestors ) ) {
+				break;
+			}
 		}
 	}
 
