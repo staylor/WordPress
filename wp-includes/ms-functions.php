@@ -434,23 +434,20 @@ function is_email_address_unsafe( $user_email ) {
 }
 
 /**
- * Processes new user registrations.
+ * Sanitize and validate data required for a user sign-up.
  *
- * Checks the data provided by the user during signup. Verifies
- * the validity and uniqueness of user names and user email addresses,
- * and checks email addresses against admin-provided domain
- * whitelists and blacklists.
+ * Verifies the validity and uniqueness of user names and user email addresses,
+ * and checks email addresses against admin-provided domain whitelists and blacklists.
  *
- * The hook 'wpmu_validate_user_signup' provides an easy way
- * to modify the signup process. The value $result, which is passed
- * to the hook, contains both the user-provided info and the error
- * messages created by the function. 'wpmu_validate_user_signup' allows
- * you to process the data in any way you'd like, and unset the
- * relevant errors if necessary.
+ * The {@see 'wpmu_validate_user_signup'} hook provides an easy way to modify the sign-up
+ * process. The value $result, which is passed to the hook, contains both the user-provided
+ * info and the error messages created by the function. {@see 'wpmu_validate_user_signup'}
+ * allows you to process the data in any way you'd like, and unset the relevant errors if
+ * necessary.
  *
  * @since MU
  *
- * @param string $user_name The login name provided by the user.
+ * @param string $user_name  The login name provided by the user.
  * @param string $user_email The email provided by the user.
  * @return array Contains username, email, and error messages.
  */
@@ -1437,7 +1434,7 @@ function wpmu_welcome_notification( $blog_id, $user_id, $password, $title, $meta
 
 	$welcome_email = get_site_option( 'welcome_email' );
 	if ( $welcome_email == false )
-		$welcome_email = __( 'Dear User,
+		$welcome_email = __( 'Howdy USERNAME,
 
 Your new SITE_NAME site has been successfully set up at:
 BLOG_URL
@@ -1937,7 +1934,7 @@ function maybe_add_existing_user_to_blog() {
 	if ( empty( $details ) || is_wp_error( add_existing_user_to_blog( $details ) ) )
 		wp_die( sprintf(__('An error occurred adding you to this site. Back to the <a href="%s">homepage</a>.'), home_url() ) );
 
-	wp_die( sprintf( __( 'You have been added to this site. Please visit the <a href="%s">homepage</a> or <a href="%s">log in</a> using your username and password.' ), home_url(), admin_url() ), __( 'WordPress &rsaquo; Success' ) );
+	wp_die( sprintf( __( 'You have been added to this site. Please visit the <a href="%s">homepage</a> or <a href="%s">log in</a> using your username and password.' ), home_url(), admin_url() ), __( 'WordPress &rsaquo; Success' ), array( 'response' => 200 ) );
 }
 
 /**
@@ -2083,7 +2080,7 @@ function users_can_register_signup_filter() {
 function welcome_user_msg_filter( $text ) {
 	if ( !$text ) {
 		remove_filter( 'site_option_welcome_user_email', 'welcome_user_msg_filter' );
-		$text = __( 'Dear User,
+		$text = __( 'Howdy USERNAME,
 
 Your new account is set up.
 

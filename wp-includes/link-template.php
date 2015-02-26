@@ -1521,6 +1521,36 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 		}
 	}
 
+	// 'post_status' clause depends on the current user.
+	if ( is_user_logged_in() ) {
+		$user_id = get_current_user_id();
+
+		$post_type_object = get_post_type_object( $post->post_type );
+		if ( empty( $post_type_object ) ) {
+			$post_type_cap    = $post->post_type;
+			$read_private_cap = 'read_private_' . $post_type_cap . 's';
+		} else {
+			$read_private_cap = $post_type_object->cap->read_private_posts;
+		}
+
+		/*
+		 * Results should include private posts belonging to the current user, or private posts where the
+		 * current user has the 'read_private_posts' cap.
+		 */
+		$private_states = get_post_stati( array( 'private' => true ) );
+		$where .= " AND ( p.post_status = 'publish'";
+		foreach ( (array) $private_states as $state ) {
+			if ( current_user_can( $read_private_cap ) ) {
+				$where .= $wpdb->prepare( " OR p.post_status = %s", $state );
+			} else {
+				$where .= $wpdb->prepare( " OR (p.post_author = %d AND p.post_status = %s)", $user_id, $state );
+			}
+		}
+		$where .= " )";
+	} else {
+		$where .= " AND p.post_status = 'publish'";
+	}
+
 	$adjacent = $previous ? 'previous' : 'next';
 	$op = $previous ? '<' : '>';
 	$order = $previous ? 'DESC' : 'ASC';
@@ -1551,7 +1581,7 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 	 * @param bool   $in_same_term   Whether post should be in a same taxonomy term.
 	 * @param array  $excluded_terms Array of excluded term IDs.
 	 */
-	$where = apply_filters( "get_{$adjacent}_post_where", $wpdb->prepare( "WHERE p.post_date $op %s AND p.post_type = %s AND p.post_status = 'publish' $where", $current_post_date, $post->post_type ), $in_same_term, $excluded_terms );
+	$where = apply_filters( "get_{$adjacent}_post_where", $wpdb->prepare( "WHERE p.post_date $op %s AND p.post_type = %s $where", $current_post_date, $post->post_type ), $in_same_term, $excluded_terms );
 
 	/**
 	 * Filter the ORDER BY clause in the SQL for an adjacent post query.
@@ -2394,13 +2424,13 @@ function get_comments_pagenum_link( $pagenum = 1, $max_page = 0 ) {
 	if ( 'newest' == get_option('default_comments_page') ) {
 		if ( $pagenum != $max_page ) {
 			if ( $wp_rewrite->using_permalinks() )
-				$result = user_trailingslashit( trailingslashit($result) . 'comment-page-' . $pagenum, 'commentpaged');
+				$result = user_trailingslashit( trailingslashit($result) . $wp_rewrite->comments_pagination_base . '-' . $pagenum, 'commentpaged');
 			else
 				$result = add_query_arg( 'cpage', $pagenum, $result );
 		}
 	} elseif ( $pagenum > 1 ) {
 		if ( $wp_rewrite->using_permalinks() )
-			$result = user_trailingslashit( trailingslashit($result) . 'comment-page-' . $pagenum, 'commentpaged');
+			$result = user_trailingslashit( trailingslashit($result) . $wp_rewrite->comments_pagination_base . '-' . $pagenum, 'commentpaged');
 		else
 			$result = add_query_arg( 'cpage', $pagenum, $result );
 	}
@@ -2543,7 +2573,7 @@ function paginate_comments_links($args = array()) {
 		'add_fragment' => '#comments'
 	);
 	if ( $wp_rewrite->using_permalinks() )
-		$defaults['base'] = user_trailingslashit(trailingslashit(get_permalink()) . 'comment-page-%#%', 'commentpaged');
+		$defaults['base'] = user_trailingslashit(trailingslashit(get_permalink()) . $wp_rewrite->comments_pagination_base . '-%#%', 'commentpaged');
 
 	$args = wp_parse_args( $args, $defaults );
 	$page_links = paginate_links( $args );
@@ -2564,23 +2594,42 @@ function paginate_comments_links($args = array()) {
  * @return string The Press This bookmarklet link URL.
  */
 function get_shortcut_link() {
-	// In case of breaking changes, version this. #WP20071
-	$link = "javascript:
-			var d=document,
-			w=window,
-			e=w.getSelection,
-			k=d.getSelection,
-			x=d.selection,
-			s=(e?e():(k)?k():(x?x.createRange().text:0)),
-			f='" . admin_url('press-this.php') . "',
-			l=d.location,
-			e=encodeURIComponent,
-			u=f+'?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s)+'&v=4';
-			a=function(){if(!w.open(u,'t','toolbar=0,resizable=1,scrollbars=1,status=1,width=720,height=570'))l.href=u;};
-			if (/Firefox/.test(navigator.userAgent)) setTimeout(a, 0); else a();
-			void(0)";
+	global $is_IE, $wp_version;
 
-	$link = str_replace(array("\r", "\n", "\t"),  '', $link);
+	$bookmarklet_version = '5';
+	$link = '';
+
+	if ( $is_IE ) {
+		/**
+		 * Return the old/shorter bookmarklet code for MSIE 8 and lower,
+		 * since they only support a max length of ~2000 characters for
+		 * bookmark[let] URLs, which is way to small for our smarter one.
+		 * Do update the version number so users do not get the "upgrade your
+		 * bookmarklet" notice when using PT in those browsers.
+		 */
+		$ua = $_SERVER['HTTP_USER_AGENT'];
+
+		if ( ! empty( $ua ) && preg_match( '/\bMSIE (\d)/', $ua, $matches ) && (int) $matches[1] <= 8 ) {
+			$url = wp_json_encode( admin_url( 'press-this.php' ) );
+
+			$link = 'javascript:var d=document,w=window,e=w.getSelection,k=d.getSelection,x=d.selection,' .
+				's=(e?e():(k)?k():(x?x.createRange().text:0)),f=' . $url . ',l=d.location,e=encodeURIComponent,' .
+				'u=f+"?u="+e(l.href)+"&t="+e(d.title)+"&s="+e(s)+"&v=' . $bookmarklet_version . '";' .
+				'a=function(){if(!w.open(u,"t","toolbar=0,resizable=1,scrollbars=1,status=1,width=600,height=700"))l.href=u;};' .
+				'if(/Firefox/.test(navigator.userAgent))setTimeout(a,0);else a();void(0)';
+		}
+	}
+
+	if ( empty( $link ) ) {
+		$src = @file_get_contents( ABSPATH . 'wp-admin/js/bookmarklet.min.js' );
+
+		if ( $src ) {
+			$url = wp_json_encode( admin_url( 'press-this.php' ) . '?v=' . $bookmarklet_version );
+			$link = 'javascript:' . str_replace( 'window.pt_url', $url, $src );
+		}
+	}
+
+	$link = str_replace( array( "\r", "\n", "\t" ),  '', $link );
 
 	/**
 	 * Filter the Press This bookmarklet link.
@@ -3452,7 +3501,7 @@ function get_avatar_data( $id_or_email, $args = null ) {
 	$args = apply_filters( 'pre_get_avatar_data', $args, $id_or_email );
 
 	if ( isset( $args['url'] ) && ! is_null( $args['url'] ) ) {
-		/** This filter is documented in src/wp-includes/link-template.php */
+		/** This filter is documented in wp-includes/link-template.php */
 		return apply_filters( 'get_avatar_data', $args, $id_or_email );
 	}
 
@@ -3489,7 +3538,7 @@ function get_avatar_data( $id_or_email, $args = null ) {
 		$allowed_comment_types = apply_filters( 'get_avatar_comment_types', array( 'comment' ) );
 		if ( ! empty( $id_or_email->comment_type ) && ! in_array( $id_or_email->comment_type, (array) $allowed_comment_types ) ) {
 			$args['url'] = false;
-			/** This filter is documented in src/wp-includes/link-template.php */
+			/** This filter is documented in wp-includes/link-template.php */
 			return apply_filters( 'get_avatar_data', $args, $id_or_email );
 		}
 

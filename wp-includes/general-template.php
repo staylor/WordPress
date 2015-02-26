@@ -346,11 +346,13 @@ function wp_login_url($redirect = '', $force_reauth = false) {
 	 * Filter the login URL.
 	 *
 	 * @since 2.8.0
+	 * @since 4.2.0 The `$force_reauth` parameter was added.
 	 *
-	 * @param string $login_url The login URL.
-	 * @param string $redirect  The path to redirect to on login, if supplied.
+	 * @param string $login_url    The login URL.
+	 * @param string $redirect     The path to redirect to on login, if supplied.
+	 * @param bool   $force_reauth Whether to force reauthorization, even if a cookie is present.
 	 */
-	return apply_filters( 'login_url', $login_url, $redirect );
+	return apply_filters( 'login_url', $login_url, $redirect, $force_reauth );
 }
 
 /**
@@ -1481,7 +1483,7 @@ function wp_get_archives( $args = '' ) {
 			}
 		}
 	} elseif ( ( 'postbypost' == $r['type'] ) || ('alpha' == $r['type'] ) ) {
-		$orderby = ( 'alpha' == $r['type'] ) ? 'post_title ASC ' : 'post_date DESC ';
+		$orderby = ( 'alpha' == $r['type'] ) ? 'post_title ASC ' : 'post_date DESC, ID DESC ';
 		$query = "SELECT * FROM $wpdb->posts $join $where ORDER BY $orderby $limit";
 		$key = md5( $query );
 		$key = "wp_get_archives:$key:$last_changed";
@@ -2617,6 +2619,10 @@ function paginate_links( $args = '' ) {
 
 	$args = wp_parse_args( $args, $defaults );
 
+	if ( ! is_array( $args['add_args'] ) ) {
+		$args['add_args'] = array();
+	}
+
 	// Merge additional query vars found in the original URL into 'add_args' array.
 	if ( isset( $url_parts[1] ) ) {
 		// Find the format argument.
@@ -2642,7 +2648,7 @@ function paginate_links( $args = '' ) {
 	if ( $mid_size < 0 ) {
 		$mid_size = 2;
 	}
-	$add_args = is_array( $args['add_args'] ) ? $args['add_args'] : false;
+	$add_args = $args['add_args'];
 	$r = '';
 	$page_links = array();
 	$dots = false;

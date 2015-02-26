@@ -177,9 +177,9 @@ function wp_default_scripts( &$scripts ) {
 	$scripts->add( 'jquery-effects-fade', "/wp-includes/js/jquery/ui/effect-fade$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-fold', "/wp-includes/js/jquery/ui/effect-fold$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-highlight', "/wp-includes/js/jquery/ui/effect-highlight$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
-	$scripts->add( 'jquery-effects-puff', "/wp-includes/js/jquery/ui/effect-puff$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
+	$scripts->add( 'jquery-effects-puff', "/wp-includes/js/jquery/ui/effect-puff$dev_suffix.js", array('jquery-effects-core', 'jquery-effects-scale'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-pulsate', "/wp-includes/js/jquery/ui/effect-pulsate$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
-	$scripts->add( 'jquery-effects-scale', "/wp-includes/js/jquery/ui/effect-scale$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
+	$scripts->add( 'jquery-effects-scale', "/wp-includes/js/jquery/ui/effect-scale$dev_suffix.js", array('jquery-effects-core', 'jquery-effects-size'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-shake', "/wp-includes/js/jquery/ui/effect-shake$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-size', "/wp-includes/js/jquery/ui/effect-size$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
 	$scripts->add( 'jquery-effects-slide', "/wp-includes/js/jquery/ui/effect-slide$dev_suffix.js", array('jquery-effects-core'), '1.11.2', 1 );
@@ -195,7 +195,7 @@ function wp_default_scripts( &$scripts ) {
 	$scripts->add( 'jquery-ui-menu', "/wp-includes/js/jquery/ui/menu$dev_suffix.js", array( 'jquery-ui-core', 'jquery-ui-widget', 'jquery-ui-position' ), '1.11.2', 1 );
 	$scripts->add( 'jquery-ui-mouse', "/wp-includes/js/jquery/ui/mouse$dev_suffix.js", array( 'jquery-ui-core', 'jquery-ui-widget' ), '1.11.2', 1 );
 	$scripts->add( 'jquery-ui-position', "/wp-includes/js/jquery/ui/position$dev_suffix.js", array('jquery'), '1.11.2', 1 );
-	$scripts->add( 'jquery-ui-progressbar', "/wp-includes/js/jquery/ui/progressbar$dev_suffix.js", array('jquery-ui-widget'), '1.11.2', 1 );
+	$scripts->add( 'jquery-ui-progressbar', "/wp-includes/js/jquery/ui/progressbar$dev_suffix.js", array('jquery-ui-core', 'jquery-ui-widget'), '1.11.2', 1 );
 	$scripts->add( 'jquery-ui-resizable', "/wp-includes/js/jquery/ui/resizable$dev_suffix.js", array('jquery-ui-mouse'), '1.11.2', 1 );
 	$scripts->add( 'jquery-ui-selectable', "/wp-includes/js/jquery/ui/selectable$dev_suffix.js", array('jquery-ui-mouse'), '1.11.2', 1 );
 	$scripts->add( 'jquery-ui-selectmenu', "/wp-includes/js/jquery/ui/selectmenu$dev_suffix.js", array('jquery-ui-menu'), '1.11.2', 1 );
@@ -288,7 +288,8 @@ function wp_default_scripts( &$scripts ) {
 
 	$scripts->add( 'comment-reply', "/wp-includes/js/comment-reply$suffix.js", array(), false, 1 );
 
-	$scripts->add( 'json2', "/wp-includes/js/json2$suffix.js", array(), '2011-02-23');
+	$scripts->add( 'json2', "/wp-includes/js/json2$suffix.js", array(), '2011-02-23' );
+	did_action( 'init' ) && $scripts->add_data( 'json2', 'conditional', 'lt IE 8' );
 
 	$scripts->add( 'underscore', "/wp-includes/js/underscore$dev_suffix.js", array(), '1.6.0', 1 );
 	$scripts->add( 'backbone', "/wp-includes/js/backbone$dev_suffix.js", array( 'underscore','jquery' ), '1.1.2', 1 );
@@ -404,7 +405,7 @@ function wp_default_scripts( &$scripts ) {
 	$scripts->add( 'accordion', "/wp-admin/js/accordion$suffix.js", array( 'jquery' ), false, 1 );
 
 	$scripts->add( 'shortcode', "/wp-includes/js/shortcode$suffix.js", array( 'underscore' ), false, 1 );
-	$scripts->add( 'media-models', "/wp-includes/js/media-models$suffix.js", array( 'wp-backbone' ), false, 1 );
+	$scripts->add( 'media-models', "/wp-includes/js/media/models$suffix.js", array( 'wp-backbone' ), false, 1 );
 	did_action( 'init' ) && $scripts->localize( 'media-models', '_wpMediaModelsL10n', array(
 		'settings' => array(
 			'ajaxurl' => admin_url( 'admin-ajax.php', 'relative' ),
@@ -414,9 +415,9 @@ function wp_default_scripts( &$scripts ) {
 
 	// To enqueue media-views or media-editor, call wp_enqueue_media().
 	// Both rely on numerous settings, styles, and templates to operate correctly.
-	$scripts->add( 'media-views',  "/wp-includes/js/media-views$suffix.js",  array( 'utils', 'media-models', 'wp-plupload', 'jquery-ui-sortable', 'wp-mediaelement' ), false, 1 );
+	$scripts->add( 'media-views',  "/wp-includes/js/media/views$suffix.js",  array( 'utils', 'media-models', 'wp-plupload', 'jquery-ui-sortable', 'wp-mediaelement' ), false, 1 );
 	$scripts->add( 'media-editor', "/wp-includes/js/media-editor$suffix.js", array( 'shortcode', 'media-views' ), false, 1 );
-	$scripts->add( 'media-audiovideo', "/wp-includes/js/media-audiovideo$suffix.js", array( 'media-editor' ), false, 1 );
+	$scripts->add( 'media-audiovideo', "/wp-includes/js/media/audio-video$suffix.js", array( 'media-editor' ), false, 1 );
 	$scripts->add( 'mce-view', "/wp-includes/js/mce-view$suffix.js", array( 'shortcode', 'media-models', 'media-audiovideo', 'wp-playlist' ), false, 1 );
 
 	if ( is_admin() ) {
@@ -438,7 +439,12 @@ function wp_default_scripts( &$scripts ) {
 
 		$scripts->add( 'postbox', "/wp-admin/js/postbox$suffix.js", array('jquery-ui-sortable'), false, 1 );
 
-		$scripts->add( 'post', "/wp-admin/js/post$suffix.js", array('suggest', 'wp-lists', 'postbox'), false, 1 );
+		$scripts->add( 'tags-box', "/wp-admin/js/tags-box$suffix.js", array( 'jquery', 'suggest' ), false, 1 );
+		did_action( 'init' ) && $scripts->localize( 'tags-box', 'tagsBoxL10n', array(
+			'tagDelimiter' => _x( ',', 'tag delimiter' ),
+		) );
+
+		$scripts->add( 'post', "/wp-admin/js/post$suffix.js", array( 'suggest', 'wp-lists', 'postbox', 'tags-box' ), false, 1 );
 		did_action( 'init' ) && $scripts->localize( 'post', 'postL10n', array(
 			'ok' => __('OK'),
 			'cancel' => __('Cancel'),
@@ -460,11 +466,43 @@ function wp_default_scripts( &$scripts ) {
 			'password' => __('Password Protected'),
 			'privatelyPublished' => __('Privately Published'),
 			'published' => __('Published'),
-			'comma' => _x( ',', 'tag delimiter' ),
 			'saveAlert' => __('The changes you made will be lost if you navigate away from this page.'),
 			'savingText' => __('Saving Draft&#8230;'),
 		) );
 
+		$scripts->add( 'press-this', "/wp-admin/js/press-this$suffix.js", array( 'jquery', 'tags-box' ), false, 1 );
+		did_action( 'init' ) && $scripts->localize( 'press-this', 'pressThisL10n', array(
+			/**
+			 * press_this_source_string: string displayed before the source attribution string, defaults to "Source:".
+			 *
+			 * @since 4.2
+			 * @see https://github.com/MichaelArestad/Press-This/issues/25
+			 *
+			 * @param string $string Internationalized source string
+			 *
+			 * @return string Source string
+			 */
+			'source' => apply_filters( 'press_this_source_string', __( 'Source:' ) ),
+
+			/**
+			 * press_this_source_link: HTML link format for the source attribution, can control target, class, etc
+			 *
+			 * @since 4.2
+			 * @see https://github.com/MichaelArestad/Press-This/issues/25
+			 *
+			 * @param string $link_format Internationalized link format, %1$s is link href, %2$s is link text
+			 *
+			 * @return string Link markup
+			 */
+			'sourceLink' => apply_filters( 'press_this_source_link', __( '<a href="%1$s">%2$s</a>' ) ),
+			'newPost' => __( 'Title' ),
+			'unexpectedError' => __( 'Sorry, but an unexpected error occurred.' ),
+			'saveAlert' => __( 'The changes you made will be lost if you navigate away from this page.' ),
+			'allMediaHeading' => __( 'Suggested media' ),
+			'suggestedEmbedAlt' => __( 'Suggested embed #%d' ),
+			'suggestedImgAlt' => __( 'Suggested image #%d' ),
+		) );
+		
 		$scripts->add( 'editor-expand', "/wp-admin/js/editor-expand$suffix.js", array( 'jquery' ), false, 1 );
 
 		$scripts->add( 'link', "/wp-admin/js/link$suffix.js", array( 'wp-lists', 'postbox' ), false, 1 );
@@ -500,7 +538,19 @@ function wp_default_scripts( &$scripts ) {
 			'ays' => __('Are you sure you want to install this plugin?')
 		) );
 
-		$scripts->add( 'updates', "/wp-admin/js/updates$suffix.js", array( 'jquery' ) );
+		$scripts->add( 'updates', "/wp-admin/js/updates$suffix.js", array( 'jquery', 'wp-util' ) );
+		did_action( 'init' ) && $scripts->localize( 'updates', '_wpUpdatesSettings', array(
+			'ajax_nonce' => wp_create_nonce( 'updates' ),
+			'l10n'       => array(
+				'updating'      => __( 'Updating...' ),
+				'updated'       => __( 'Updated!' ),
+				'updateFailed'  => __( 'Update failed' ),
+				'installNow'    => __( 'Install Now' ),
+				'installing'    => __( 'Installing...' ),
+				'installed'     => __( 'Installed!' ),
+				'installFailed' => __( 'Installation failed' ),
+			)
+		) );
 
 		$scripts->add( 'farbtastic', '/wp-admin/js/farbtastic.js', array('jquery'), '1.2' );
 
@@ -517,7 +567,7 @@ function wp_default_scripts( &$scripts ) {
 
 		$scripts->add( 'list-revisions', "/wp-includes/js/wp-list-revisions$suffix.js" );
 
-		$scripts->add( 'media-grid', "/wp-includes/js/media-grid$suffix.js", array( 'media-editor' ), false, 1 );
+		$scripts->add( 'media-grid', "/wp-includes/js/media/grid$suffix.js", array( 'media-editor' ), false, 1 );
 		$scripts->add( 'media', "/wp-admin/js/media$suffix.js", array( 'jquery' ), false, 1 );
 		did_action( 'init' ) && $scripts->localize( 'media', 'attachMediaBoxL10n', array(
 			'error' => __( 'An error has occurred. Please reload the page and try again.' ),
@@ -620,8 +670,9 @@ function wp_default_styles( &$styles ) {
 	$styles->add( 'wp-color-picker',    "/wp-admin/css/color-picker$suffix.css" );
 	$styles->add( 'customize-controls', "/wp-admin/css/customize-controls$suffix.css", array( 'wp-admin', 'colors', 'ie', 'imgareaselect' ) );
 	$styles->add( 'customize-widgets',  "/wp-admin/css/customize-widgets$suffix.css", array( 'wp-admin', 'colors' ) );
-	$styles->add( 'ie',                 "/wp-admin/css/ie$suffix.css" );
+	$styles->add( 'press-this',         "/wp-admin/css/press-this$suffix.css", array( 'open-sans' ) );
 
+	$styles->add( 'ie',                 "/wp-admin/css/ie$suffix.css" );
 	$styles->add_data( 'ie', 'conditional', 'lte IE 7' );
 
 	// Common dependencies
