@@ -150,7 +150,7 @@ body {
 }
 
 .control-section.control-panel > .accordion-section-title:after {
-	content: "\f345";
+	content: "\f341";
 	background: #f5f5f5;
 	color: #555;
 	width: 38px;
@@ -160,10 +160,6 @@ body {
 	padding-right: 5px;
 	border-right: 1px solid #eee;
 	z-index: 0;
-}
-
-.rtl .control-section.control-panel > .accordion-section-title:after {
-	content: "\f341";
 }
 
 #customize-theme-controls .control-section.control-panel > h3.accordion-section-title:focus:after,
@@ -256,14 +252,10 @@ body {
 
 .control-panel-back:before {
 	font: normal 20px/1 dashicons;
-	content: "\f341";
+	content: "\f345";
 	position: relative;
 	top: 7px;
 	right: 13px;
-}
-
-.rtl .control-panel-back:before {
-	content: "\f345";
 }
 
 .in-sub-panel .control-panel-back {
@@ -441,7 +433,7 @@ p.customize-section-description {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin: 0;
-	padding: 5px 10px 0;
+	padding: 0 10px;
 }
 
 .customize-control .attachment-meta-title {
@@ -454,6 +446,13 @@ p.customize-section-description {
 
 .customize-control .thumbnail-image img {
 	cursor: pointer;
+}
+
+#customize-controls .thumbnail-audio .thumbnail {
+	max-width: 64px;
+	max-height: 64px;
+	margin: 10px;
+	float: right;
 }
 
 #customize-preview iframe {
@@ -733,10 +732,10 @@ p.customize-section-description {
 .customize-control-header .uploaded .header-view .close:hover {
  color: black;
  text-shadow:
-    1px 1px 0 #fff,
     1px -1px 0 #fff,
-    -1px 1px 0 #fff,
-    1px 1px 0 #fff;
+    -1px -1px 0 #fff,
+    1px 1px 0 #fff,
+    -1px 1px 0 #fff;
 }
 
 .customize-control-header .header-view:hover .close {
@@ -843,7 +842,7 @@ p.customize-section-description {
 /* #customize-container is reused from customize-loader.js, hence the naming. */
 .wp-customizer .customize-loading #customize-container {
 	display: block;
-	-webkit-animation: customize-reload .75s; /* Can't use %60transition` because `display` changes here. */
+	-webkit-animation: customize-reload .75s; /* Can't use `transition` because `display` changes here. */
 	animation: customize-reload .75s;
 }
 
@@ -901,9 +900,9 @@ p.customize-section-description {
 }
 
 .rtl #accordion-section-themes .accordion-section-title:after {
-	-webkit-transform: rotate(180deg);
-	-ms-transform: rotate(180deg);
-	transform: rotate(180deg);
+	-webkit-transform: rotate(-180deg);
+	-ms-transform: rotate(-180deg);
+	transform: rotate(-180deg);
 }
 
 #customize-theme-controls .control-section.current-panel > h3.accordion-section-title {
@@ -937,10 +936,6 @@ p.customize-section-description {
 }
 
 .control-panel-back.themes-panel-back:before {
-	content: "\f345";
-}
-
-.rtl .control-panel-back.themes-panel-back:before {
 	content: "\f341";
 }
 
@@ -988,7 +983,7 @@ p.customize-section-description {
 		left: 0;
 		top: 0;
 		bottom: 0;
-	}	
+	}
 }
 
 

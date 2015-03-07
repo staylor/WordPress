@@ -18,7 +18,7 @@ var tagBox, array_unique_noempty;
 
 		return out;
 	};
-	
+
 	tagBox = {
 		clean : function(tags) {
 			var comma = window.tagsBoxL10n.tagDelimiter;
@@ -158,16 +158,7 @@ var tagBox, array_unique_noempty;
 				t.flushTags( $(this).closest('.tagsdiv') );
 			});
 
-			$('div.taghint', ajaxtag).click(function(){
-				$(this).css('visibility', 'hidden').parent().siblings('.newtag').focus();
-			});
-
-			$('input.newtag', ajaxtag).blur(function() {
-				if ( '' === this.value )
-					$(this).parent().siblings('.taghint').css('visibility', '');
-			}).focus(function(){
-				$(this).parent().siblings('.taghint').css('visibility', 'hidden');
-			}).keyup(function(e){
+			$('input.newtag', ajaxtag).keyup(function(e){
 				if ( 13 == e.which ) {
 					tagBox.flushTags( $(this).closest('.tagsdiv') );
 					return false;
@@ -193,7 +184,7 @@ var tagBox, array_unique_noempty;
 			});
 
 			// tag cloud
-			$('a.tagcloud-link').click(function(){
+			$('.tagcloud-link').click(function(){
 				tagBox.get( $(this).attr('id') );
 				$(this).unbind().click(function(){
 					$(this).siblings('.the-tagcloud').toggle();

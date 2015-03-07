@@ -1591,8 +1591,8 @@ function get_term_to_edit( $id, $taxonomy ) {
  *     @type array|string $exclude_tree      Array or comma/space-separated string of term ids to exclude
  *                                           along with all of their descendant terms. If $include is
  *                                           non-empty, $exclude_tree is ignored. Default empty array.
- *     @type int          $number            Maximum number of terms to return. Accepts 1+ or -1 (all).
- *                                           Default -1.
+ *     @type int|string   $number            Maximum number of terms to return. Accepts ''|0 (all) or any
+ *                                           positive number. Default ''|0 (all).
  *     @type int          $offset            The number by which to offset the terms query. Default empty.
  *     @type string       $fields            Term fields to query for. Accepts 'all' (returns an array of
  *                                           term objects), 'ids' or 'names' (returns an array of integers
@@ -2693,6 +2693,8 @@ function wp_get_object_terms($object_ids, $taxonomies, $args = array()) {
 	if ( '' !== $order && ! in_array( $order, array( 'ASC', 'DESC' ) ) )
 		$order = 'ASC';
 
+	$taxonomy_array = $taxonomies;
+	$object_id_array = $object_ids;
 	$taxonomies = "'" . implode("', '", $taxonomies) . "'";
 	$object_ids = implode(', ', $object_ids);
 
@@ -2762,16 +2764,33 @@ function wp_get_object_terms($object_ids, $taxonomies, $args = array()) {
 	} elseif ( ! $objects ) {
 		$terms = array_values( array_unique( $terms ) );
 	}
+
 	/**
 	 * Filter the terms for a given object or objects.
 	 *
+	 * @since 4.2.0
+	 *
+	 * @param array $terms           An array of terms for the given object or objects.
+	 * @param array $object_id_array Array of object IDs for which `$terms` were retrieved.
+	 * @param array $taxonomy_array  Array of taxonomies from which `$terms` were retrieved.
+	 * @param array $args            An array of arguments for retrieving terms for the given object(s).
+	 *                               See {@see wp_get_object_terms()} for details.
+	 */
+	$terms = apply_filters( 'get_object_terms', $terms, $object_id_array, $taxonomy_array, $args );
+
+	/**
+	 * Filter the terms for a given object or objects.
+	 *
+	 * The `$taxonomies` parameter passed to this filter is formatted as a SQL fragment. The
+	 * {@see 'get_object_terms'} filter is recommended as an alternative.
+	 *
 	 * @since 2.8.0
 	 *
-	 * @param array        $terms      An array of terms for the given object or objects.
-	 * @param array|int    $object_ids Object ID or array of IDs.
-	 * @param array|string $taxonomies A taxonomy or array of taxonomies.
-	 * @param array        $args       An array of arguments for retrieving terms for
-	 *                                 the given object(s).
+	 * @param array     $terms      An array of terms for the given object or objects.
+	 * @param int|array $object_ids Object ID or array of IDs.
+	 * @param string    $taxonomies SQL-formatted (comma-separated and quoted) list of taxonomy names.
+	 * @param array     $args       An array of arguments for retrieving terms for the given object(s).
+	 *                              See {@see wp_get_object_terms()} for details.
 	 */
 	return apply_filters( 'wp_get_object_terms', $terms, $object_ids, $taxonomies, $args );
 }

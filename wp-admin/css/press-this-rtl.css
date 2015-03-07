@@ -217,9 +217,9 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 fieldset {
-	border: 1px solid #c0c0c0;
-	margin: 0 2px;
-	padding: 0.35em 0.625em 0.75em;
+	border: 0;
+	margin: 0;
+	padding: 0;
 }
 
 legend {
@@ -258,8 +258,7 @@ th {
 	display: none;
 }
 
-.screen-reader-text,
-.taghint {
+.screen-reader-text {
 	position: absolute;
 	margin: -1px;
 	padding: 0;
@@ -312,7 +311,7 @@ strong {
 *
 * Pushing buttons is what I do.
 */
-.button-primary,
+
 .button-subtle,
 .scan-submit {
 	display: inline-block;
@@ -328,37 +327,6 @@ strong {
 	white-space: nowrap;
 	cursor: pointer;
 	-webkit-appearance: none;
-}
-
-.button-primary {
-	background: #2ea2cc;
-	border-color: #2581a2;
-	color: #fff;
-}
-
-.button-primary:hover,
-.button-primary:focus {
-	background: #2991b7;
-	border-color: #20708e;
-	color: #fff;
-	outline: 0;
-}
-
-.button-primary:active {
-	background: #2581a2;
-	border-color: #20708e;
-	color: #fff;
-}
-
-.button-primary[disabled],
-.button-primary:disabled {
-	color: #c7ced1 !important;
-	background: #2688ab !important;
-	border-color: #20708e !important;
-}
-
-.button-primary:visited {
-	color: #fff;
 }
 
 .button-subtle {
@@ -383,6 +351,10 @@ strong {
 	text-decoration: underline;
 }
 
+.preview-button {
+	margin-left: 1em;
+}
+
 .button-reset {
 	margin: 0;
 	padding: 0;
@@ -394,6 +366,23 @@ strong {
 
 .button-reset:focus {
 	outline: 0;
+}
+
+.button-link {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #0074a2;
+	cursor: pointer;
+	-webkit-appearance: none;
+}
+
+.button-link:hover,
+.button-link:active,
+.button-link:focus {
+	color: #2ea2cc;
+	text-decoration: underline;
 }
 
 
@@ -521,10 +510,9 @@ dd {
 	display: none;
 }
 
-/* TODO Needed after merge? */
 .post-format {
-	width: 0;
-	height: 0;
+	width: 1px;
+	height: 1px;
 	position: absolute;
 	top: -9999px;
 }
@@ -668,9 +656,12 @@ dd {
 	border: 0;
 	-webkit-border-radius: 0;
 	border-radius: 0;
+	margin: 0;
 	padding: 0 16px;
 	background: #f7f7f7;
 	border-right: 1px solid #f1f1f1;
+	-webkit-box-shadow: none;
+	box-shadow: none;
 }
 
 .tagsdiv .tagadd:hover,
@@ -680,6 +671,8 @@ dd {
 	background: #2991b7;
 	border-color: #20708e;
 	color: #fff;
+	-webkit-box-shadow: none;
+	box-shadow: none;
 }
 
 .tagsdiv .howto {
@@ -773,7 +766,7 @@ dd {
 	margin: 2px 0;
 	height: 20px;
 	width: 20px;
-	background: 0 0;
+	background: 100% 0;
 	color: #9ea7af;
 	font: 400 16px/1 dashicons;
 	text-align: center;
@@ -1109,16 +1102,13 @@ input[type="search"].categories-search,
 /**
 * Main
 */
-html,
-body {
-	overflow-x: hidden;
+html {
+	overflow: auto;
 }
 
-@media (min-width: 901px) {
-	html,
-	body {
-		height: 100%;
-	}
+body {
+	overflow-x: hidden;
+	height: 100%;
 }
 
 html {
@@ -1233,7 +1223,8 @@ html {
 }
 
 .options-open.is-hidden,
-.options-close.is-hidden {
+.options-close.is-hidden,
+.options-panel-back.is-hidden {
 	display: none;
 }
 
@@ -1812,17 +1803,26 @@ html {
 	width: 320px;
 	border-right: 1px solid #e5e5e5;
 	font-size: 14px;
-	/* Keeps background the full height of the screen */
-	-webkit-box-shadow: -5001px 5000px 0 5000px #fff, 5000px 5000px 0 5000px #e5e5e5;
-	box-shadow: -5001px 5000px 0 5000px #fff, 5000px 5000px 0 5000px #e5e5e5;
+	/* Keeps background the full height of the screen, but only visually. Clicks go through. */
+	-webkit-box-shadow: -5001px 5000px 0 5000px #fff, -5000px 5000px 0 5000px #e5e5e5;
+	box-shadow: -5001px 5000px 0 5000px #fff, -5000px 5000px 0 5000px #e5e5e5;
+}
+
+.options-panel-back {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	width: 320px;
+	outline: 0;
 }
 
 @media (max-width: 900px) {
 	.options-panel {
 		background: #fff;
-		-webkit-transform: translateX(-100%);
-		-ms-transform: translateX(-100%);
-		transform: translateX(-100%);
+		-webkit-transform: translateX(100%);
+		-ms-transform: translateX(100%);
+		transform: translateX(100%);
 		-webkit-transition: -webkit-transform .3s ease-in-out;
 		transition: transform .3s ease-in-out;
 	}
@@ -1846,6 +1846,10 @@ html {
 		-webkit-box-shadow: -5001px 5000px 0 5000px #fff;
 		box-shadow: -5001px 5000px 0 5000px #fff;
 	}
+
+	.options-panel-back {
+		width: 100%;
+	}
 }
 
 .post-options {
@@ -1861,11 +1865,16 @@ html {
 	color: #333;
 }
 
-.post-options .dashicons-arrow-right-alt2 {
+.post-option-forward:before {
 	position: absolute;
 	top: 50%;
 	left: 8px;
 	margin-top: -10px;
+	content: "\f341"
+}
+
+.post-option-back:before {
+	content: "\f345";
 }
 
 .lt-ie9 .options-panel,
@@ -1913,9 +1922,9 @@ html {
 @media (min-width: 1px) {
 	.is-off-screen > .post-option {
 		left: auto;
-		-webkit-transform: translateX(-100%);
-		-ms-transform: translateX(-100%);
-		transform: translateX(-100%);
+		-webkit-transform: translateX(100%);
+		-ms-transform: translateX(100%);
+		transform: translateX(100%);
 	}
 }
 
@@ -1948,9 +1957,9 @@ html {
 @media (min-width: 1px) {
 	.setting-modal.is-off-screen {
 		right: 0;
-		-webkit-transform: translateX(100%);
-		-ms-transform: translateX(100%);
-		transform: translateX(100%);
+		-webkit-transform: translateX(-100%);
+		-ms-transform: translateX(-100%);
+		transform: translateX(-100%);
 	}
 }
 
