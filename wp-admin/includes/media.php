@@ -280,14 +280,14 @@ function media_handle_upload($file_id, $post_id, $post_data = array(), $override
 	$file = $file['file'];
 	$title = $name;
 	$content = '';
+	$excerpt = '';
 
 	if ( preg_match( '#^audio#', $type ) ) {
 		$meta = wp_read_audio_metadata( $file );
 
-		if ( ! empty( $meta['title'] ) )
+		if ( ! empty( $meta['title'] ) ) {
 			$title = $meta['title'];
-
-		$content = '';
+		}
 
 		if ( ! empty( $title ) ) {
 
@@ -335,10 +335,13 @@ function media_handle_upload($file_id, $post_id, $post_data = array(), $override
 
 	// Use image exif/iptc data for title and caption defaults if possible.
 	} elseif ( 0 === strpos( $type, 'image/' ) && $image_meta = @wp_read_image_metadata( $file ) ) {
-		if ( trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) )
+		if ( trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) ) {
 			$title = $image_meta['title'];
-		if ( trim( $image_meta['caption'] ) )
-			$content = $image_meta['caption'];
+		}
+
+		if ( trim( $image_meta['caption'] ) ) {
+			$excerpt = $image_meta['caption'];
+		}
 	}
 
 	// Construct the attachment array
@@ -348,6 +351,7 @@ function media_handle_upload($file_id, $post_id, $post_data = array(), $override
 		'post_parent' => $post_id,
 		'post_title' => $title,
 		'post_content' => $content,
+		'post_excerpt' => $excerpt,
 	), $post_data );
 
 	// This should never be set as it would then overwrite an existing attachment.
@@ -617,8 +621,8 @@ function media_upload_form_handler() {
 	$errors = null;
 
 	if ( isset($_POST['send']) ) {
-		$keys = array_keys($_POST['send']);
-		$send_id = (int) array_shift($keys);
+		$keys = array_keys( $_POST['send'] );
+		$send_id = (int) reset( $keys );
 	}
 
 	if ( !empty($_POST['attachments']) ) foreach ( $_POST['attachments'] as $attachment_id => $attachment ) {
@@ -818,17 +822,20 @@ function wp_media_upload_handler() {
 }
 
 /**
- * Download an image from the specified URL and attach it to a post.
+ * Downloads an image from the specified URL and attaches it to a post.
  *
  * @since 2.6.0
+ * @since 4.2.0 Introduced the `$return` parameter.
  *
- * @param string $file The URL of the image to download
- * @param int $post_id The post ID the media is to be associated with
- * @param string $desc Optional. Description of the image
- * @return string|WP_Error Populated HTML img tag on success
+ * @param string $file    The URL of the image to download.
+ * @param int    $post_id The post ID the media is to be associated with.
+ * @param string $desc    Optional. Description of the image.
+ * @param string $return  Optional. Accepts 'html' (image tag html) or 'src' (URL). Default 'html'.
+ * @return string|WP_Error Populated HTML img tag on success, WP_Error object otherwise.
  */
-function media_sideload_image( $file, $post_id, $desc = null ) {
+function media_sideload_image( $file, $post_id, $desc = null, $return = 'html' ) {
 	if ( ! empty( $file ) ) {
+
 		// Set variables for storage, fix file filename for query strings.
 		preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png)\b/i', $file, $matches );
 		$file_array = array();
@@ -854,11 +861,17 @@ function media_sideload_image( $file, $post_id, $desc = null ) {
 		$src = wp_get_attachment_url( $id );
 	}
 
-	// Finally check to make sure the file has been saved, then return the HTML.
+	// Finally, check to make sure the file has been saved, then return the HTML.
 	if ( ! empty( $src ) ) {
+		if ( $return === 'src' ) {
+			return $src;
+		}
+
 		$alt = isset( $desc ) ? esc_attr( $desc ) : '';
 		$html = "<img src='$src' alt='$alt' />";
 		return $html;
+	} else {
+		return new WP_Error( 'image_sideload_failed' );
 	}
 }
 
@@ -1039,6 +1052,14 @@ function image_link_input_fields($post, $url_type = '') {
 ";
 }
 
+/**
+ * Output a textarea element for inputting an attachment caption.
+ *
+ * @since 3.4.0
+ *
+ * @param WP_Post $edit_post Attachment WP_Post object.
+ * @return string HTML markup for the textarea element.
+ */
 function wp_caption_input_textarea($edit_post) {
 	// Post data is already escaped.
 	$name = "attachments[{$edit_post->ID}][post_excerpt]";
@@ -1346,7 +1367,7 @@ function get_media_item( $attachment_id, $args = null ) {
 
 	$post_mime_types = get_post_mime_types();
 	$keys = array_keys( wp_match_mime_types( array_keys( $post_mime_types ), $post->post_mime_type ) );
-	$type = array_shift( $keys );
+	$type = reset( $keys );
 	$type_html = "<input type='hidden' id='type-of-$attachment_id' value='" . esc_attr( $type ) . "' />";
 
 	$form_fields = get_attachment_fields_to_edit( $post, $r['errors'] );
@@ -2084,7 +2105,7 @@ var addExtImage = {
 		t.preloadImg.onerror = t.resetImageData;
 		t.preloadImg.src = src;
 	}
-}
+};
 
 jQuery(document).ready( function($) {
 	$('.media-types input').click( function() {
@@ -2653,13 +2674,13 @@ function edit_form_image_editor( $post ) {
 			<?php if ( $open ) wp_image_editor( $attachment_id ); ?>
 		</div>
 	<?php
-	elseif ( $attachment_id && 0 === strpos( $post->post_mime_type, 'audio/' ) ):
+	elseif ( $attachment_id && wp_attachment_is( 'audio', $post ) ):
 
 		wp_maybe_generate_attachment_metadata( $post );
 
 		echo wp_audio_shortcode( array( 'src' => $att_url ) );
 
-	elseif ( $attachment_id && 0 === strpos( $post->post_mime_type, 'video/' ) ):
+	elseif ( $attachment_id && wp_attachment_is( 'video', $post ) ):
 
 		wp_maybe_generate_attachment_metadata( $post );
 
@@ -3009,4 +3030,64 @@ function wp_read_audio_metadata( $file ) {
 	wp_add_id3_tag_data( $metadata, $data );
 
 	return $metadata;
+}
+
+/**
+ * Encapsulate logic for Attach/Detach actions
+ *
+ * @since 4.2.0
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
+ *
+ * @param int    $parent_id Attachment parent ID.
+ * @param string $action    Optional. Attach/detach action. Accepts 'attach' or 'detach'.
+ *                          Default 'attach'.
+ */
+function wp_media_attach_action( $parent_id, $action = 'attach' ) {
+	global $wpdb;
+
+	if ( ! $parent_id ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_post', $parent_id ) ) {
+		wp_die( __( 'You are not allowed to edit this post.' ) );
+	}
+	$ids = array();
+	foreach ( (array) $_REQUEST['media'] as $att_id ) {
+		$att_id = (int) $att_id;
+
+		if ( ! current_user_can( 'edit_post', $att_id ) ) {
+			continue;
+		}
+
+		$ids[] = $att_id;
+	}
+
+	if ( ! empty( $ids ) ) {
+		$ids_string = implode( ',', $ids );
+		if ( 'attach' === $action ) {
+			$result = $wpdb->query( $wpdb->prepare( "UPDATE $wpdb->posts SET post_parent = %d WHERE post_type = 'attachment' AND ID IN ( $ids_string )", $parent_id ) );
+		} else {
+			$result = $wpdb->query( "UPDATE $wpdb->posts SET post_parent = 0 WHERE post_type = 'attachment' AND ID IN ( $ids_string )" );
+		}
+
+		foreach ( $ids as $att_id ) {
+			clean_attachment_cache( $att_id );
+		}
+	}
+
+	if ( isset( $result ) ) {
+		$location = 'upload.php';
+		if ( $referer = wp_get_referer() ) {
+			if ( false !== strpos( $referer, 'upload.php' ) ) {
+				$location = remove_query_arg( array( 'attached', 'detach' ), $referer );
+			}
+		}
+
+		$key = 'attach' === $action ? 'attached' : 'detach';
+		$location = add_query_arg( array( $key => $result ), $location );
+		wp_redirect( $location );
+		exit;
+	}
 }

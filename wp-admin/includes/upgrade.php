@@ -265,20 +265,22 @@ As a new WordPress user, you should go to <a href=\"%s\">your dashboard</a> to d
 endif;
 
 /**
- * Enable pretty permalinks.
+ * Maybe enable pretty permalinks on install.
  *
  * If after enabling pretty permalinks don't work, fallback to query-string permalinks.
  *
  * @since 4.2.0
  *
  * @global WP_Rewrite $wp_rewrite WordPress rewrite component.
+ *
+ * @return bool Whether pretty permalinks are enabled. False otherwise.
  */
 function wp_install_maybe_enable_pretty_permalinks() {
 	global $wp_rewrite;
 
 	// Bail if a permalink structure is already enabled.
 	if ( get_option( 'permalink_structure' ) ) {
-		return;
+		return true;
 	}
 
 	/*
@@ -305,6 +307,7 @@ function wp_install_maybe_enable_pretty_permalinks() {
 
 		// Test against a real WordPress Post, or if none were created, a random 404 page.
 		$test_url = get_permalink( 1 );
+
 		if ( ! $test_url ) {
 			$test_url = home_url( '/wordpress-check-for-rewrites/' );
 		}
@@ -331,6 +334,8 @@ function wp_install_maybe_enable_pretty_permalinks() {
 	 */
 	$wp_rewrite->set_permalink_structure( '' );
 	$wp_rewrite->flush_rules( true );
+
+	return false;
 }
 
 if ( !function_exists('wp_new_blog_notification') ) :
@@ -518,6 +523,15 @@ function upgrade_all() {
 
 	if ( $wp_current_db_version < 29630 )
 		upgrade_400();
+
+	// Don't harsh my mellow. upgrade_430() must be called before
+	// upgrade_420() to catch bad comments prior to any auto-expansion of
+	// MySQL column widths.
+	if ( $wp_current_db_version < 32364 )
+		upgrade_430();
+
+	if ( $wp_current_db_version < 31351 )
+		upgrade_420();
 
 	maybe_disable_link_manager();
 
@@ -1407,6 +1421,75 @@ function upgrade_400() {
 }
 
 /**
+ * Execute changes made in WordPress 4.2.0.
+ *
+ * @since 4.2.0
+ */
+function upgrade_420() {
+	global $wp_current_db_version, $wpdb;
+
+	if ( $wp_current_db_version < 31351 && $wpdb->charset === 'utf8mb4' ) {
+		if ( is_multisite() ) {
+			$tables = $wpdb->tables( 'blog' );
+		} else {
+			$tables = $wpdb->tables( 'all' );
+		}
+
+		foreach ( $tables as $table ) {
+			maybe_convert_table_to_utf8mb4( $table );
+		}
+	}
+}
+
+/**
+ * Execute changes made in WordPress 4.3.0.
+ *
+ * @since 4.3.0
+ */
+function upgrade_430() {
+	global $wp_current_db_version, $wpdb;
+
+	if ( $wp_current_db_version < 32364 ) {
+		$content_length = $wpdb->get_col_length( $wpdb->comments, 'comment_content' );
+
+		if ( is_wp_error( $content_length ) ) {
+			return;
+		}
+
+		if ( false === $content_length ) {
+			$content_length = array(
+				'type'   => 'byte',
+				'length' => 65535,
+			);
+		} elseif ( ! is_array( $content_length ) ) {
+			$length = (int) $content_length > 0 ? (int) $content_length : 65535;
+			$content_length = array(
+				'type'	 => 'byte',
+				'length' => $length
+			);
+		}
+
+		if ( 'byte' !== $content_length['type'] || 0 === $content_length['length'] ) {
+			// Sites with malformed DB schemas are on their own.
+			return;
+		}
+
+		$allowed_length = intval( $content_length['length'] ) - 10;
+
+		$comments = $wpdb->get_results(
+			"SELECT `comment_ID` FROM `{$wpdb->comments}`
+				WHERE `comment_date_gmt` > '2015-04-26'
+				AND LENGTH( `comment_content` ) >= {$allowed_length}
+				AND ( `comment_content` LIKE '%<%' OR `comment_content` LIKE '%>%' )"
+		);
+
+		foreach ( $comments as $comment ) {
+			wp_delete_comment( $comment->comment_ID, true );
+		}
+	}
+}
+
+/**
  * Executes network-level upgrade routines.
  *
  * @since 3.0.0
@@ -1500,6 +1583,40 @@ function upgrade_network() {
 			$illegal_name = reset( $illegal_names );
 			$illegal_names = explode( ' ', $illegal_name );
 			update_site_option( 'illegal_names', $illegal_names );
+		}
+	}
+
+	// 4.2
+	if ( $wp_current_db_version < 31351 && $wpdb->charset === 'utf8mb4' ) {
+		if ( ! ( defined( 'DO_NOT_UPGRADE_GLOBAL_TABLES' ) && DO_NOT_UPGRADE_GLOBAL_TABLES ) ) {
+			$wpdb->query( "ALTER TABLE $wpdb->usermeta DROP INDEX meta_key, ADD INDEX meta_key(meta_key(191))" );
+			$wpdb->query( "ALTER TABLE $wpdb->site DROP INDEX domain, ADD INDEX domain(domain(140),path(51))" );
+			$wpdb->query( "ALTER TABLE $wpdb->sitemeta DROP INDEX meta_key, ADD INDEX meta_key(meta_key(191))" );
+			$wpdb->query( "ALTER TABLE $wpdb->signups DROP INDEX domain_path, ADD INDEX domain_path(domain(140),path(51))" );
+
+			$tables = $wpdb->tables( 'global' );
+
+			foreach ( $tables as $table ) {
+				maybe_convert_table_to_utf8mb4( $table );
+			}
+		}
+	}
+
+	// 4.3
+	if ( $wp_current_db_version < 32378 && 'utf8mb4' === $wpdb->charset ) {
+		if ( ! ( defined( 'DO_NOT_UPGRADE_GLOBAL_TABLES' ) && DO_NOT_UPGRADE_GLOBAL_TABLES ) ) {
+			$upgrade = false;
+			$indexes = $wpdb->get_results( "SHOW INDEXES FROM $wpdb->signups" );
+			foreach( $indexes as $index ) {
+				if ( 'domain_path' == $index->Key_name && 'domain' == $index->Column_name && 140 != $index->Sub_part ) {
+					$upgrade = true;
+					break;
+				}
+			}
+
+			if ( $upgrade ) {
+				$wpdb->query( "ALTER TABLE $wpdb->signups DROP INDEX domain_path, ADD INDEX domain_path(domain(140),path(51))" );
+			}
 		}
 	}
 }
@@ -1605,6 +1722,47 @@ function maybe_add_column($table_name, $column_name, $create_ddl) {
 		}
 	}
 	return false;
+}
+
+/**
+ * If a table only contains utf8 or utf8mb4 columns, convert it to utf8mb4.
+ *
+ * @since 4.2.0
+ *
+ * @param string $table The table to convert.
+ * @return bool true if the table was converted, false if it wasn't.
+ */
+function maybe_convert_table_to_utf8mb4( $table ) {
+	global $wpdb;
+
+	$results = $wpdb->get_results( "SHOW FULL COLUMNS FROM `$table`" );
+	if ( ! $results ) {
+		return false;
+	}
+
+	foreach ( $results as $column ) {
+		if ( $column->Collation ) {
+			list( $charset ) = explode( '_', $column->Collation );
+			$charset = strtolower( $charset );
+			if ( 'utf8' !== $charset && 'utf8mb4' !== $charset ) {
+				// Don't upgrade tables that have non-utf8 columns.
+				return false;
+			}
+		}
+	}
+
+	$table_details = $wpdb->get_row( "SHOW TABLE STATUS LIKE '$table'" );
+	if ( ! $table_details ) {
+		return false;
+	}
+
+	list( $table_charset ) = explode( '_', $table_details->Collation );
+	$table_charset = strtolower( $table_charset );
+	if ( 'utf8mb4' === $table_charset ) {
+		return true;
+	}
+
+	return $wpdb->query( "ALTER TABLE $table CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" );
 }
 
 /**
@@ -1905,12 +2063,23 @@ function dbDelta( $queries = '', $execute = true ) {
 						$index_columns .= '('.$column_data['subpart'].')';
 					}
 				}
+
+				// The alternative index string doesn't care about subparts
+				$alt_index_columns = preg_replace( '/\([^)]*\)/', '', $index_columns );
+
 				// Add the column list to the index create string.
-				$index_string .= ' ('.$index_columns.')';
-				if (!(($aindex = array_search($index_string, $indices)) === false)) {
-					unset($indices[$aindex]);
-					// todo: Remove this?
-					//echo "<pre style=\"border:1px solid #ccc;margin-top:5px;\">{$table}:<br />Found index:".$index_string."</pre>\n";
+				$index_strings = array(
+					"$index_string ($index_columns)",
+					"$index_string ($alt_index_columns)",
+				);
+
+				foreach( $index_strings as $index_string ) {
+					if ( ! ( ( $aindex = array_search( $index_string, $indices ) ) === false ) ) {
+						unset( $indices[ $aindex ] );
+						break;
+						// todo: Remove this?
+						//echo "<pre style=\"border:1px solid #ccc;margin-top:5px;\">{$table}:<br />Found index:".$index_string."</pre>\n";
+					}
 				}
 				// todo: Remove this?
 				//else echo "<pre style=\"border:1px solid #ccc;margin-top:5px;\">{$table}:<br /><b>Did not find index:</b>".$index_string."<br />".print_r($indices, true)."</pre>\n";
@@ -2283,6 +2452,18 @@ function pre_schema_upgrade() {
 	if ( $wp_current_db_version < 30133 ) {
 		// dbDelta() can recreate but can't drop the index.
 		$wpdb->query( "ALTER TABLE $wpdb->terms DROP INDEX slug" );
+	}
+
+	// Upgrade versions prior to 4.2.
+	if ( $wp_current_db_version < 31351 ) {
+		if ( ! is_multisite() ) {
+			$wpdb->query( "ALTER TABLE $wpdb->usermeta DROP INDEX meta_key, ADD INDEX meta_key(meta_key(191))" );
+		}
+		$wpdb->query( "ALTER TABLE $wpdb->terms DROP INDEX slug, ADD INDEX slug(slug(191))" );
+		$wpdb->query( "ALTER TABLE $wpdb->terms DROP INDEX name, ADD INDEX name(name(191))" );
+		$wpdb->query( "ALTER TABLE $wpdb->commentmeta DROP INDEX meta_key, ADD INDEX meta_key(meta_key(191))" );
+		$wpdb->query( "ALTER TABLE $wpdb->postmeta DROP INDEX meta_key, ADD INDEX meta_key(meta_key(191))" );
+		$wpdb->query( "ALTER TABLE $wpdb->posts DROP INDEX post_name, ADD INDEX post_name(post_name(191))" );
 	}
 }
 

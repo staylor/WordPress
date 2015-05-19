@@ -509,6 +509,18 @@ class WP_List_Table {
 	protected function months_dropdown( $post_type ) {
 		global $wpdb, $wp_locale;
 
+		/**
+		 * Filter whether to remove the 'Months' drop-down from the post list table.
+		 *
+		 * @since 4.2.0
+		 *
+		 * @param bool   $disable   Whether to disable the drop-down. Default false.
+		 * @param string $post_type The post type.
+		 */
+		if ( apply_filters( 'disable_months_dropdown', false, $post_type ) ) {
+			return;
+		}
+
 		$months = $wpdb->get_results( $wpdb->prepare( "
 			SELECT DISTINCT YEAR( post_date ) AS year, MONTH( post_date ) AS month
 			FROM $wpdb->posts
@@ -674,7 +686,7 @@ class WP_List_Table {
 			$infinite_scroll = $this->_pagination_args['infinite_scroll'];
 		}
 
-		$output = '<span class="displaying-num">' . sprintf( _n( '1 item', '%s items', $total_items ), number_format_i18n( $total_items ) ) . '</span>';
+		$output = '<span class="displaying-num">' . sprintf( _n( '%s item', '%s items', $total_items ), number_format_i18n( $total_items ) ) . '</span>';
 
 		$current = $this->get_pagenum();
 
@@ -927,18 +939,19 @@ class WP_List_Table {
 	</tr>
 	</thead>
 
-	<tfoot>
-	<tr>
-		<?php $this->print_column_headers( false ); ?>
-	</tr>
-	</tfoot>
-
 	<tbody id="the-list"<?php
 		if ( $singular ) {
 			echo " data-wp-lists='list:$singular'";
 		} ?>>
 		<?php $this->display_rows_or_placeholder(); ?>
 	</tbody>
+
+	<tfoot>
+	<tr>
+		<?php $this->print_column_headers( false ); ?>
+	</tr>
+	</tfoot>
+
 </table>
 <?php
 		$this->display_tablenav( 'bottom' );
@@ -1097,7 +1110,7 @@ class WP_List_Table {
 
 		if ( isset( $this->_pagination_args['total_items'] ) ) {
 			$response['total_items_i18n'] = sprintf(
-				_n( '1 item', '%s items', $this->_pagination_args['total_items'] ),
+				_n( '%s item', '%s items', $this->_pagination_args['total_items'] ),
 				number_format_i18n( $this->_pagination_args['total_items'] )
 			);
 		}

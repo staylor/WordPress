@@ -609,7 +609,13 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
 	switch( $show ) {
 		case 'home' : // DEPRECATED
 		case 'siteurl' : // DEPRECATED
-			_deprecated_argument( __FUNCTION__, '2.2', sprintf( __('The <code>%s</code> option is deprecated for the family of <code>bloginfo()</code> functions.' ), $show ) . ' ' . sprintf( __( 'Use the <code>%s</code> option instead.' ), 'url'  ) );
+			_deprecated_argument( __FUNCTION__, '2.2', sprintf(
+				/* translators: 1: 'siteurl'/'home' argument, 2: bloginfo() function name, 3: 'url' argument */
+				__( 'The %1$s option is deprecated for the family of %2$s functions. Use the %3$s option instead.' ),
+				'<code>' . $show . '</code>',
+				'<code>bloginfo()</code>',
+				'<code>url</code>'
+			) );
 		case 'url' :
 			$output = home_url();
 			break;
@@ -669,7 +675,13 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
 			$output = str_replace('_', '-', $output);
 			break;
 		case 'text_direction':
-			//_deprecated_argument( __FUNCTION__, '2.2', sprintf( __('The <code>%s</code> option is deprecated for the family of <code>bloginfo()</code> functions.' ), $show ) . ' ' . sprintf( __( 'Use the <code>%s</code> function instead.' ), 'is_rtl()'  ) );
+			_deprecated_argument( __FUNCTION__, '2.2', sprintf(
+				/* translators: 1: 'text_direction' argument, 2: bloginfo() function name, 3: is_rtl() function name */
+				__( 'The %1$s option is deprecated for the family of %2$s functions. Use the %3$s function instead.' ),
+				'<code>' . $show . '</code>',
+				'<code>bloginfo()</code>',
+				'<code>is_rtl()</code>'
+			) );
 			if ( function_exists( 'is_rtl' ) ) {
 				$output = is_rtl() ? 'rtl' : 'ltr';
 			} else {
@@ -1483,7 +1495,7 @@ function wp_get_archives( $args = '' ) {
 			}
 		}
 	} elseif ( ( 'postbypost' == $r['type'] ) || ('alpha' == $r['type'] ) ) {
-		$orderby = ( 'alpha' == $r['type'] ) ? 'post_title ASC ' : 'post_date DESC ';
+		$orderby = ( 'alpha' == $r['type'] ) ? 'post_title ASC ' : 'post_date DESC, ID DESC ';
 		$query = "SELECT * FROM $wpdb->posts $join $where ORDER BY $orderby $limit";
 		$key = md5( $query );
 		$key = "wp_get_archives:$key:$last_changed";
@@ -2578,7 +2590,28 @@ function language_attributes($doctype = 'html') {
  *
  * @since 2.1.0
  *
- * @param string|array $args Optional. Override defaults.
+ * @param string|array $args {
+ *     Optional. Array or string of arguments for generating paginated links for archives.
+ *
+ *     @type string $base               Base of the paginated url. Default empty.
+ *     @type string $format             Format for the pagination structure. Default empty.
+ *     @type int    $total              The total amount of pages. Default is the value WP_Query's
+ *                                      `max_num_pages` or 1.
+ *     @type int    $current            The current page number. Default is 'paged' query var or 1.
+ *     @type bool   $show_all           Whether to show all pages. Default false.
+ *     @type int    $end_size           How many numbers on either the start and the end list edges.
+ *                                      Default 1.
+ *     @type int    $mid_size           How many numbers to either side of the current pages. Default 2.
+ *     @type bool   $prev_next          Whether to include the previous and next links in the list. Default true.
+ *     @type bool   $prev_text          The previous page text. Default '« Previous'.
+ *     @type bool   $next_text          The next page text. Default '« Previous'.
+ *     @type string $type               Controls format of the returned value. Possible values are 'plain',
+ *                                      'array' and 'list'. Default is 'plain'.
+ *     @type array  $add_args           An array of query args to add. Default false.
+ *     @type string $add_fragment       A string to append to each link. Default empty.
+ *     @type string $before_page_number A string to appear before the page number. Default empty.
+ *     @type string $after_page_number  A string to append after the page number. Default empty.
+ * }
  * @return array|string String of page links or array of page links.
  */
 function paginate_links( $args = '' ) {
@@ -2619,15 +2652,28 @@ function paginate_links( $args = '' ) {
 
 	$args = wp_parse_args( $args, $defaults );
 
+	if ( ! is_array( $args['add_args'] ) ) {
+		$args['add_args'] = array();
+	}
+
 	// Merge additional query vars found in the original URL into 'add_args' array.
 	if ( isset( $url_parts[1] ) ) {
 		// Find the format argument.
-		$format_query = parse_url( str_replace( '%_%', $args['format'], $args['base'] ), PHP_URL_QUERY );
-		wp_parse_str( $format_query, $format_arg );
+		$format = explode( '?', str_replace( '%_%', $args['format'], $args['base'] ) );
+		$format_query = isset( $format[1] ) ? $format[1] : '';
+		wp_parse_str( $format_query, $format_args );
+
+		// Find the query args of the requested URL.
+		wp_parse_str( $url_parts[1], $url_query_args );
 
 		// Remove the format argument from the array of query arguments, to avoid overwriting custom format.
-		wp_parse_str( remove_query_arg( array_keys( $format_arg ), $url_parts[1] ), $query_args );
-		$args['add_args'] = array_merge( $args['add_args'], urlencode_deep( $query_args ) );
+		foreach ( $format_args as $format_arg => $format_arg_value ) {
+			if ( isset( $url_query_args[ $format_arg ] ) ) {
+				unset( $url_query_args[ $format_arg ] );
+			}
+		}
+
+		$args['add_args'] = array_merge( $args['add_args'], urlencode_deep( $url_query_args ) );
 	}
 
 	// Who knows what else people pass in $args
@@ -2644,7 +2690,7 @@ function paginate_links( $args = '' ) {
 	if ( $mid_size < 0 ) {
 		$mid_size = 2;
 	}
-	$add_args = is_array( $args['add_args'] ) ? $args['add_args'] : false;
+	$add_args = $args['add_args'];
 	$r = '';
 	$page_links = array();
 	$dots = false;
@@ -2757,8 +2803,8 @@ function register_admin_color_schemes() {
 
 	wp_admin_css_color( 'fresh', _x( 'Default', 'admin color scheme' ),
 		false,
-		array( '#222', '#333', '#0074a2', '#2ea2cc' ),
-		array( 'base' => '#999', 'focus' => '#2ea2cc', 'current' => '#fff' )
+		array( '#222', '#333', '#0073aa', '#00a0d2' ),
+		array( 'base' => '#999', 'focus' => '#00a0d2', 'current' => '#fff' )
 	);
 
 	// Other color schemes are not available when running out of src

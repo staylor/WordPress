@@ -203,7 +203,7 @@ function wp_print_media_templates() {
 			<div class="upload-ui">
 				<h3 class="upload-instructions drop-instructions"><?php _e( 'Drop files anywhere to upload' ); ?></h3>
 				<p class="upload-instructions drop-instructions"><?php _ex( 'or', 'Uploader: Drop files here - or - Select Files' ); ?></p>
-				<a href="#" class="browser button button-hero"><?php _e( 'Select Files' ); ?></a>
+				<button type="button" class="browser button button-hero"><?php _e( 'Select Files' ); ?></button>
 			</div>
 
 			<div class="upload-inline-status"></div>
@@ -273,7 +273,6 @@ function wp_print_media_templates() {
 	</script>
 
 	<script type="text/html" id="tmpl-uploader-status-error">
-		<span class="upload-error-label"><?php _e('Error'); ?></span>
 		<span class="upload-error-filename">{{{ data.filename }}}</span>
 		<span class="upload-error-message">{{ data.message }}</span>
 	</script>
@@ -329,7 +328,7 @@ function wp_print_media_templates() {
 
 				<div class="attachment-actions">
 					<# if ( 'image' === data.type && ! data.uploading && data.sizes && data.can.save ) { #>
-						<a class="button edit-attachment" href="#"><?php _e( 'Edit Image' ); ?></a>
+					<button type="button" class="button edit-attachment"><?php _e( 'Edit Image' ); ?></button>
 					<# } #>
 				</div>
 			</div>
@@ -812,9 +811,9 @@ function wp_print_media_templates() {
 	</script>
 
 	<script type="text/html" id="tmpl-embed-link-settings">
-		<label class="setting title">
-			<span><?php _e( 'Title' ); ?></span>
-			<input type="text" class="alignment" data-setting="title" />
+		<label class="setting link-text">
+			<span><?php _e( 'Link Text' ); ?></span>
+			<input type="text" class="alignment" data-setting="linkText" />
 		</label>
 		<div class="embed-container" style="display: none;">
 			<div class="embed-preview"></div>
@@ -1205,7 +1204,7 @@ function wp_print_media_templates() {
 	</script>
 
 	<script type="text/html" id="tmpl-editor-gallery">
-		<# if ( data.attachments ) { #>
+		<# if ( data.attachments.length ) { #>
 			<div class="gallery gallery-columns-{{ data.columns }}">
 				<# _.each( data.attachments, function( attachment, index ) { #>
 					<dl class="gallery-item">

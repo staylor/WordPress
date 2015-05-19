@@ -1520,7 +1520,7 @@ class wp_xmlrpc_server extends IXR_Server {
 	 *
 	 * @uses get_post()
 	 * @param array $args Method parameters. Contains:
-	 *  - int     $blog_id (unset)
+	 *  - int     $blog_id (unused)
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $post_id
@@ -2244,7 +2244,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		$user_data = get_userdata( $user_id );
 
 		if ( ! $user_data )
-			return new IXR_Error( 404, __( 'Invalid user ID' ) );
+			return new IXR_Error( 404, __( 'Invalid user ID.' ) );
 
 		return $this->_prepare_user( $user_data, $fields );
 	}
@@ -2916,7 +2916,7 @@ class wp_xmlrpc_server extends IXR_Server {
 			return $this->error;
 
 		if ( !current_user_can( 'edit_posts' ) )
-			return new IXR_Error( 401, __( 'Sorry, you must be able to edit posts to this site in order to view categories.' ) );
+			return new IXR_Error( 401, __( 'Sorry, you must be able to edit posts on this site in order to view categories.' ) );
 
 		/** This action is documented in wp-includes/class-wp-xmlrpc-server.php */
 		do_action( 'xmlrpc_call', 'wp.suggestCategories' );
@@ -3817,7 +3817,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		do_action( 'xmlrpc_call', 'wp.getRevisions' );
 
 		if ( ! $post = get_post( $post_id ) )
-			return new IXR_Error( 404, __( 'Invalid post ID' ) );
+			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		if ( ! current_user_can( 'edit_post', $post_id ) )
 			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit posts.' ) );
@@ -3878,13 +3878,13 @@ class wp_xmlrpc_server extends IXR_Server {
 		do_action( 'xmlrpc_call', 'wp.restoreRevision' );
 
 		if ( ! $revision = wp_get_post_revision( $revision_id ) )
-			return new IXR_Error( 404, __( 'Invalid post ID' ) );
+			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		if ( wp_is_post_autosave( $revision ) )
-			return new IXR_Error( 404, __( 'Invalid post ID' ) );
+			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		if ( ! $post = get_post( $revision->post_parent ) )
-			return new IXR_Error( 404, __( 'Invalid post ID' ) );
+			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		if ( ! current_user_can( 'edit_post', $revision->post_parent ) )
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit this post.' ) );
@@ -4756,20 +4756,26 @@ class wp_xmlrpc_server extends IXR_Server {
 		$post_author = $postdata['post_author'];
 
 		// Only set the post_author if one is set.
-		if ( isset($content_struct['wp_author_id']) && ($user->ID != $content_struct['wp_author_id']) ) {
-			switch ( $post_type ) {
-				case 'post':
-					if ( !current_user_can('edit_others_posts') )
-						return new IXR_Error( 401, __( 'You are not allowed to change the post author as this user.' ) );
-					break;
-				case 'page':
-					if ( !current_user_can('edit_others_pages') )
-						return new IXR_Error( 401, __( 'You are not allowed to change the page author as this user.' ) );
-					break;
-				default:
-					return new IXR_Error( 401, __( 'Invalid post type' ) );
+		if ( isset( $content_struct['wp_author_id'] ) ) {
+			// Check permissions if attempting to switch author to or from another user.
+			if ( $user->ID != $content_struct['wp_author_id'] || $user->ID != $post_author ) {
+				switch ( $post_type ) {
+					case 'post':
+						if ( ! current_user_can( 'edit_others_posts' ) ) {
+							return new IXR_Error( 401, __( 'You are not allowed to change the post author as this user.' ) );
+						}
+						break;
+					case 'page':
+						if ( ! current_user_can( 'edit_others_pages' ) ) {
+							return new IXR_Error( 401, __( 'You are not allowed to change the page author as this user.' ) );
+						}
+						break;
+					default:
+						return new IXR_Error( 401, __( 'Invalid post type' ) );
+						break;
+				}
+				$post_author = $content_struct['wp_author_id'];
 			}
-			$post_author = $content_struct['wp_author_id'];
 		}
 
 		if ( isset($content_struct['mt_allow_comments']) ) {
