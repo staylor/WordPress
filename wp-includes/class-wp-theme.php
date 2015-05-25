@@ -184,7 +184,7 @@ final class WP_Theme implements ArrayAccess {
 	 *
 	 * @param string $theme_dir Directory of the theme within the theme_root.
 	 * @param string $theme_root Theme root.
-	 * @param WP_Error|null $_child If this theme is a parent theme, the child may be passed for validation purposes.
+	 * @param WP_Error|void $_child If this theme is a parent theme, the child may be passed for validation purposes.
 	 */
 	public function __construct( $theme_dir, $theme_root, $_child = null ) {
 		global $wp_theme_directories;
@@ -403,7 +403,7 @@ final class WP_Theme implements ArrayAccess {
 		static $keys = array(
 			'Name', 'Version', 'Status', 'Title', 'Author', 'Author Name', 'Author URI', 'Description',
 			'Template', 'Stylesheet', 'Template Files', 'Stylesheet Files', 'Template Dir', 'Stylesheet Dir',
-			 'Screenshot', 'Tags', 'Theme Root', 'Theme Root URI', 'Parent Theme',
+			'Screenshot', 'Tags', 'Theme Root', 'Theme Root URI', 'Parent Theme',
 		);
 
 		return in_array( $offset, $keys );
