@@ -153,6 +153,8 @@ function get_the_category_by_ID( $cat_ID ) {
  *
  * @since 1.5.1
  *
+ * @global WP_Rewrite $wp_rewrite
+ *
  * @param string $separator Optional, default is empty string. Separator for between the categories.
  * @param string $parents Optional. How to display the parents.
  * @param int $post_id Optional. Post ID to retrieve categories.
@@ -629,7 +631,7 @@ function wp_list_categories( $args = '' ) {
  * @since 2.3.0
  *
  * @param array|string|null $args Optional. Override default arguments.
- * @return null|array Generated tag cloud, only if no failures and 'array' is set for the 'format' argument.
+ * @return void|array Generated tag cloud, only if no failures and 'array' is set for the 'format' argument.
  *                    Otherwise, this function outputs the tag cloud.
  */
 function wp_tag_cloud( $args = '' ) {
@@ -1403,7 +1405,7 @@ function get_the_term_list( $id, $taxonomy, $before = '', $sep = '', $after = ''
  * @param string $before Optional. Before list.
  * @param string $sep Optional. Separate items using this.
  * @param string $after Optional. After list.
- * @return false|null False on WordPress error. Returns null when displaying.
+ * @return false|void False on WordPress error.
  */
 function the_terms( $id, $taxonomy, $before = '', $sep = ', ', $after = '' ) {
 	$term_list = get_the_term_list( $id, $taxonomy, $before, $sep, $after );
