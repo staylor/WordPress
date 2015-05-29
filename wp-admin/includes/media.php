@@ -36,6 +36,8 @@ function media_upload_tabs() {
  *
  * @since 2.5.0
  *
+ * @global wpdb $wpdb
+ *
  * @param array $tabs
  * @return array $tabs with gallery if post has image attachment
  */
@@ -61,12 +63,13 @@ function update_gallery_tab($tabs) {
 
 	return $tabs;
 }
-add_filter('media_upload_tabs', 'update_gallery_tab');
 
 /**
  * {@internal Missing Short Description}}
  *
  * @since 2.5.0
+ *
+ * @global string $redir_tab
  */
 function the_media_upload_tabs() {
 	global $redir_tab;
@@ -216,7 +219,6 @@ function image_add_caption( $html, $id, $caption, $title, $align, $url, $size, $
 	 */
 	return apply_filters( 'image_add_caption_shortcode', $shcode, $html );
 }
-add_filter( 'image_send_to_editor', 'image_add_caption', 20, 8 );
 
 /**
  * Private preg_replace callback used in image_add_caption()
@@ -433,6 +435,8 @@ function media_handle_sideload($file_array, $post_id, $desc = null, $post_data =
  *
  * @since 2.5.0
  *
+ * @global int $body_id
+ *
  * @param string|callable $content_func
  */
 function wp_iframe($content_func /* ... */) {
@@ -527,6 +531,10 @@ document.body.className = document.body.className.replace('no-js', 'js');
  *
  * @since 2.5.0
  *
+ * @global int $post_ID
+ *
+ * @staticvar int $instance
+ *
  * @param string $editor_id
  */
 function media_buttons($editor_id = 'content') {
@@ -567,7 +575,6 @@ function media_buttons($editor_id = 'content') {
 		echo $legacy_filter;
 	}
 }
-add_action( 'media_buttons', 'media_buttons' );
 
 /**
  *
@@ -1131,8 +1138,6 @@ function image_attachment_fields_to_save( $post, $attachment ) {
 	return $post;
 }
 
-add_filter( 'attachment_fields_to_save', 'image_attachment_fields_to_save', 10, 2 );
-
 /**
  * {@internal Missing Short Description}}
  *
@@ -1157,8 +1162,6 @@ function image_media_send_to_editor($html, $attachment_id, $attachment) {
 
 	return $html;
 }
-
-add_filter('media_send_to_editor', 'image_media_send_to_editor', 10, 3);
 
 /**
  * {@internal Missing Short Description}}
@@ -1288,6 +1291,8 @@ function get_attachment_fields_to_edit($post, $errors = null) {
  *
  * @since 2.5.0
  *
+ * @global WP_Query $wp_the_query
+ *
  * @param int $post_id Optional. Post ID.
  * @param array $errors Errors for attachment, if any.
  * @return string
@@ -1321,6 +1326,8 @@ function get_media_items( $post_id, $errors ) {
  * Retrieve HTML form for modifying the image attachment.
  *
  * @since 2.5.0
+ *
+ * @global string $redir_tab
  *
  * @param int $attachment_id Attachment ID for modification.
  * @param string|array $args Optional. Override defaults.
@@ -1736,6 +1743,11 @@ function media_upload_header() {
  *
  * @since 2.5.0
  *
+ * @global string $type
+ * @global string $tab
+ * @global bool   $is_IE
+ * @global bool   $is_opera
+ *
  * @param array $errors
  */
 function media_upload_form( $errors = null ) {
@@ -2135,6 +2147,10 @@ echo apply_filters( 'type_url_form_media', wp_media_insert_url_form( $type ) );
  *
  * @since 2.5.0
  *
+ * @global string $redir_tab
+ * @global string $type
+ * @global string $tab
+ *
  * @param array $errors
  */
 function media_upload_gallery_form($errors) {
@@ -2279,6 +2295,13 @@ jQuery(function($){
  * {@internal Missing Short Description}}
  *
  * @since 2.5.0
+ *
+ * @global wpdb      $wpdb
+ * @global WP_Query  $wp_query
+ * @global WP_Locale $wp_locale
+ * @global string    $type
+ * @global string    $tab
+ * @global array     $post_mime_types
  *
  * @param array $errors
  */
@@ -2564,6 +2587,8 @@ function wp_media_insert_url_form( $default_view = 'image' ) {
  * Displays the multi-file uploader message.
  *
  * @since 2.6.0
+ *
+ * @global int $post_ID
  */
 function media_upload_flash_bypass() {
 	$browser_uploader = admin_url( 'media-new.php?browser-uploader' );
@@ -2579,7 +2604,6 @@ function media_upload_flash_bypass() {
 	</p>
 	<?php
 }
-add_action('post-plupload-upload-ui', 'media_upload_flash_bypass');
 
 /**
  * Displays the browser's built-in uploader message.
@@ -2593,7 +2617,6 @@ function media_upload_html_bypass() {
 	</p>
 	<?php
 }
-add_action('post-html-upload-ui', 'media_upload_html_bypass');
 
 /**
  * Used to display a "After a file has been uploaded..." help message.
@@ -2875,21 +2898,6 @@ function attachment_submitbox_metadata() {
 <?php
 	endif;
 }
-
-add_filter( 'async_upload_image', 'get_media_item', 10, 2 );
-add_filter( 'async_upload_audio', 'get_media_item', 10, 2 );
-add_filter( 'async_upload_video', 'get_media_item', 10, 2 );
-add_filter( 'async_upload_file',  'get_media_item', 10, 2 );
-
-add_action( 'media_upload_image', 'wp_media_upload_handler' );
-add_action( 'media_upload_audio', 'wp_media_upload_handler' );
-add_action( 'media_upload_video', 'wp_media_upload_handler' );
-add_action( 'media_upload_file',  'wp_media_upload_handler' );
-
-add_filter( 'media_upload_gallery', 'media_upload_gallery' );
-add_filter( 'media_upload_library', 'media_upload_library' );
-
-add_action( 'attachment_submitbox_misc_actions', 'attachment_submitbox_metadata' );
 
 /**
  * Parse ID3v2, ID3v1, and getID3 comments to extract usable data

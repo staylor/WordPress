@@ -158,12 +158,13 @@ function install_dashboard() {
 	}
 	echo '</p><br class="clear" />';
 }
-add_action( 'install_plugins_featured', 'install_dashboard' );
 
 /**
  * Display search form for searching plugins.
  *
  * @since 2.7.0
+ *
+ * @param bool $type_selector
  */
 function install_search_form( $type_selector = true ) {
 	$type = isset($_REQUEST['type']) ? wp_unslash( $_REQUEST['type'] ) : 'term';
@@ -209,7 +210,6 @@ function install_plugins_upload() {
 </div>
 <?php
 }
-add_action('install_plugins_upload', 'install_plugins_upload' );
 
 /**
  * Show a username form for the favorites page
@@ -235,6 +235,8 @@ function install_plugins_favorites_form() {
  * Display plugin content based on plugin list.
  *
  * @since 2.7.0
+ *
+ * @global WP_List_Table $wp_list_table
  */
 function display_plugins_table() {
 	global $wp_list_table;
@@ -256,17 +258,15 @@ function display_plugins_table() {
 	</form>
 	<?php
 }
-add_action( 'install_plugins_search',      'display_plugins_table' );
-add_action( 'install_plugins_popular',     'display_plugins_table' );
-add_action( 'install_plugins_recommended', 'display_plugins_table' );
-add_action( 'install_plugins_new',         'display_plugins_table' );
-add_action( 'install_plugins_beta',        'display_plugins_table' );
-add_action( 'install_plugins_favorites',   'display_plugins_table' );
 
 /**
  * Determine the status we can perform on a plugin.
  *
  * @since 3.0.0
+ *
+ * @param array|object $api
+ * @param bool        $loop
+ * @return type
  */
 function install_plugin_install_status($api, $loop = false) {
 	// This function is called recursively, $loop prevents further loops.
@@ -337,6 +337,9 @@ function install_plugin_install_status($api, $loop = false) {
  * Display plugin information in dialog box form.
  *
  * @since 2.7.0
+ *
+ * @global string $tab
+ * @global string $wp_version
  */
 function install_plugin_information() {
 	global $tab;
@@ -577,4 +580,3 @@ function install_plugin_information() {
 	iframe_footer();
 	exit;
 }
-add_action('install_plugins_pre_plugin-information', 'install_plugin_information');
