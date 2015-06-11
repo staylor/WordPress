@@ -156,19 +156,46 @@
 	Container = api.Class.extend({
 		defaultActiveArguments: { duration: 'fast', completeCallback: $.noop },
 		defaultExpandedArguments: { duration: 'fast', completeCallback: $.noop },
+		containerType: 'container',
+		defaults: {
+			title: '',
+			description: '',
+			priority: 100,
+			type: 'default',
+			content: null,
+			active: true,
+			instanceNumber: null
+		},
 
 		/**
 		 * @since 4.1.0
 		 *
-		 * @param {String} id
-		 * @param {Object} options
+		 * @param {string}         id - The ID for the container.
+		 * @param {object}         options - Object containing one property: params.
+		 * @param {object}         options.params - Object containing the following properties.
+		 * @param {string}         options.params.title - Title shown when panel is collapsed and expanded.
+		 * @param {string=}        [options.params.description] - Description shown at the top of the panel.
+		 * @param {number=100}     [options.params.priority] - The sort priority for the panel.
+		 * @param {string=default} [options.params.type] - The type of the panel. See wp.customize.panelConstructor.
+		 * @param {string=}        [options.params.content] - The markup to be used for the panel container. If empty, a JS template is used.
+		 * @param {boolean=true}   [options.params.active] - Whether the panel is active or not.
 		 */
 		initialize: function ( id, options ) {
 			var container = this;
 			container.id = id;
-			container.params = {};
-			$.extend( container, options || {} );
+			options = options || {};
+
+			options.params = _.defaults(
+				options.params || {},
+				container.defaults
+			);
+
+			$.extend( container, options );
+			container.templateSelector = 'customize-' + container.containerType + '-' + container.params.type;
 			container.container = $( container.params.content );
+			if ( 0 === container.container.length ) {
+				container.container = $( container.getContainer() );
+			}
 
 			container.deferred = {
 				embedded: new $.Deferred()
@@ -191,11 +218,13 @@
 				container.onChangeExpanded( expanded, args );
 			});
 
-			container.attachEvents();
+			container.deferred.embedded.done( function () {
+				container.attachEvents();
+			});
 
 			api.utils.bubbleChildValueChanges( container, [ 'priority', 'active' ] );
 
-			container.priority.set( isNaN( container.params.priority ) ? 100 : container.params.priority );
+			container.priority.set( container.params.priority );
 			container.active.set( container.params.active );
 			container.expanded.set( false );
 		},
@@ -366,7 +395,28 @@
 		 * Bring the container into view and then expand this and bring it into view
 		 * @param {Object} [params]
 		 */
-		focus: focus
+		focus: focus,
+
+		/**
+		 * Return the container html, generated from its JS template, if it exists.
+		 *
+		 * @since 4.3.0
+		 */
+		getContainer: function () {
+			var template,
+				container = this;
+
+			if ( 0 !== $( '#tmpl-' + container.templateSelector ).length ) {
+				template = wp.template( container.templateSelector );
+			} else {
+				template = wp.template( 'customize-' + container.containerType + '-default' );
+			}
+			if ( template && container.container ) {
+				return $.trim( template( container.params ) );
+			}
+
+			return '<li></li>';
+		}
 	});
 
 	/**
@@ -376,12 +426,33 @@
 	 * @augments wp.customize.Class
 	 */
 	api.Section = Container.extend({
+		containerType: 'section',
+		defaults: {
+			title: '',
+			description: '',
+			priority: 100,
+			type: 'default',
+			content: null,
+			active: true,
+			instanceNumber: null,
+			panel: null,
+			customizeAction: ''
+		},
 
 		/**
 		 * @since 4.1.0
 		 *
-		 * @param {String} id
-		 * @param {Array}  options
+		 * @param {string}         id - The ID for the section.
+		 * @param {object}         options - Object containing one property: params.
+		 * @param {object}         options.params - Object containing the following properties.
+		 * @param {string}         options.params.title - Title shown when section is collapsed and expanded.
+		 * @param {string=}        [options.params.description] - Description shown at the top of the section.
+		 * @param {number=100}     [options.params.priority] - The sort priority for the section.
+		 * @param {string=default} [options.params.type] - The type of the section. See wp.customize.sectionConstructor.
+		 * @param {string=}        [options.params.content] - The markup to be used for the section container. If empty, a JS template is used.
+		 * @param {boolean=true}   [options.params.active] - Whether the section is active or not.
+		 * @param {string}         options.params.panel - The ID for the panel this section is associated with.
+		 * @param {string=}        [options.params.customizeAction] - Additional context information shown before the section title when expanded.
 		 */
 		initialize: function ( id, options ) {
 			var section = this;
@@ -977,11 +1048,20 @@
 	 * @augments wp.customize.Class
 	 */
 	api.Panel = Container.extend({
+		containerType: 'panel',
+
 		/**
 		 * @since 4.1.0
 		 *
-		 * @param  {String} id
-		 * @param  {Object} options
+		 * @param {string}         id - The ID for the panel.
+		 * @param {object}         options - Object containing one property: params.
+		 * @param {object}         options.params - Object containing the following properties.
+		 * @param {string}         options.params.title - Title shown when panel is collapsed and expanded.
+		 * @param {string=}        [options.params.description] - Description shown at the top of the panel.
+		 * @param {number=100}     [options.params.priority] - The sort priority for the panel.
+		 * @param {string=default} [options.params.type] - The type of the panel. See wp.customize.panelConstructor.
+		 * @param {string=}        [options.params.content] - The markup to be used for the panel container. If empty, a JS template is used.
+		 * @param {boolean=true}   [options.params.active] - Whether the panel is active or not.
 		 */
 		initialize: function ( id, options ) {
 			var panel = this;
@@ -1003,6 +1083,7 @@
 
 			if ( ! panel.container.parent().is( parentContainer ) ) {
 				parentContainer.append( panel.container );
+				panel.renderContent();
 			}
 			panel.deferred.embedded.resolve();
 		},
@@ -1045,6 +1126,7 @@
 				}
 				event.preventDefault(); // Keep this AFTER the key filter above
 
+				meta = panel.container.find( '.panel-meta' );
 				if ( meta.hasClass( 'cannot-expand' ) ) {
 					return;
 				}
@@ -1168,6 +1250,28 @@
 				backBtn.attr( 'tabindex', '-1' );
 				panelTitle.focus();
 				container.scrollTop( 0 );
+			}
+		},
+
+		/**
+		 * Render the panel from its JS template, if it exists.
+		 *
+		 * The panel's container must already exist in the DOM.
+		 *
+		 * @since 4.3.0
+		 */
+		renderContent: function () {
+			var template,
+				panel = this;
+
+			// Add the content to the container.
+			if ( 0 !== $( '#tmpl-' + panel.templateSelector + '-content' ).length ) {
+				template = wp.template( panel.templateSelector + '-content' );
+			} else {
+				template = wp.template( 'customize-panel-default-content' );
+			}
+			if ( template && panel.container ) {
+				panel.container.find( '.accordion-sub-container' ).html( template( panel.params ) );
 			}
 		}
 	});

@@ -3008,6 +3008,12 @@ function wp_enqueue_media( $args = array() ) {
 
 	$hier = $post && is_post_type_hierarchical( $post->post_type );
 
+	if ( $post ) {
+		$post_type_object = get_post_type_object( $post->post_type );
+	} else {
+		$post_type_object = get_post_type_object( 'post' );
+	}
+
 	$strings = array(
 		// Generic
 		'url'         => __( 'URL' ),
@@ -3066,8 +3072,8 @@ function wp_enqueue_media( $args = array() ) {
 		'insertFromUrlTitle' => __( 'Insert from URL' ),
 
 		// Featured Images
-		'setFeaturedImageTitle' => __( 'Set Featured Image' ),
-		'setFeaturedImage'    => __( 'Set featured image' ),
+		'setFeaturedImageTitle' => $post_type_object->labels->featured_image,
+		'setFeaturedImage'      => $post_type_object->labels->set_featured_image,
 
 		// Gallery
 		'createGalleryTitle' => __( 'Create Gallery' ),
