@@ -2,6 +2,7 @@ inherit: true
 filter:
     excluded_paths:
         - wp-content/*
+        - wp-includes/pomo/*
         - wp-includes/ID3/*
         - wp-includes/SimplePie/*
         - wp-includes/Text/*
@@ -14,6 +15,8 @@ filter:
         - wp-includes/class-simplepie.php
         - wp-includes/class-smtp.php
         - wp-includes/class-snoopy.php
+        - wp-includes/deprecated.php
+        - wp-includes/ms-deprecated.php
         - wp-includes/rss.php
         - wp-admin/includes/class-ftp-pure.php
         - wp-admin/includes/class-ftp-sockets.php
