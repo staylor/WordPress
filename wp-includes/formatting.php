@@ -20,6 +20,8 @@
  *
  * Code within certain html blocks are skipped.
  *
+ * Do not use this function before the 'init' action hook; everything will break.
+ *
  * @since 0.71
  *
  * @global array $wp_cockneyreplace Array of formatted entities for certain common phrases
@@ -102,11 +104,16 @@ function wptexturize( $text, $reset = false ) {
 		if ( isset($wp_cockneyreplace) ) {
 			$cockney = array_keys( $wp_cockneyreplace );
 			$cockneyreplace = array_values( $wp_cockneyreplace );
-		} elseif ( "'" != $apos ) { // Only bother if we're doing a replacement.
-			$cockney = array( "'tain't", "'twere", "'twas", "'tis", "'twill", "'til", "'bout", "'nuff", "'round", "'cause", "'em" );
-			$cockneyreplace = array( $apos . "tain" . $apos . "t", $apos . "twere", $apos . "twas", $apos . "tis", $apos . "twill", $apos . "til", $apos . "bout", $apos . "nuff", $apos . "round", $apos . "cause", $apos . "em" );
 		} else {
-			$cockney = $cockneyreplace = array();
+			/* translators: This is a comma-separated list of words that defy the syntax of quotations in normal use,
+			 * for example...  'We do not have enough words yet' ... is a typical quoted phrase.  But when we write
+			 * lines of code 'til we have enough of 'em, then we need to insert apostrophes instead of quotes.
+			 */
+			$cockney = explode( ',', _x( "'tain't,'twere,'twas,'tis,'twill,'til,'bout,'nuff,'round,'cause,'em",
+				'Comma-separated list of words to texturize in your language' ) );
+
+			$cockneyreplace = explode( ',', _x( '&#8217;tain&#8217;t,&#8217;twere,&#8217;twas,&#8217;tis,&#8217;twill,&#8217;til,&#8217;bout,&#8217;nuff,&#8217;round,&#8217;cause,&#8217;em',
+				'Comma-separated list of replacement words in your language' ) );
 		}
 
 		$static_characters = array_merge( array( '...', '``', '\'\'', ' (tm)' ), $cockney );
@@ -122,10 +129,10 @@ function wptexturize( $text, $reset = false ) {
 
 		// '99' and '99" are ambiguous among other patterns; assume it's an abbreviated year at the end of a quotation.
 		if ( "'" !== $apos || "'" !== $closing_single_quote ) {
-			$dynamic[ '/\'(\d\d)\'(?=\Z|[.,)}\-\]]|&gt;|' . $spaces . ')/' ] = $apos . '$1' . $closing_single_quote;
+			$dynamic[ '/\'(\d\d)\'(?=\Z|[.,:;!?)}\-\]]|&gt;|' . $spaces . ')/' ] = $apos . '$1' . $closing_single_quote;
 		}
 		if ( "'" !== $apos || '"' !== $closing_quote ) {
-			$dynamic[ '/\'(\d\d)"(?=\Z|[.,)}\-\]]|&gt;|' . $spaces . ')/' ] = $apos . '$1' . $closing_quote;
+			$dynamic[ '/\'(\d\d)"(?=\Z|[.,:;!?)}\-\]]|&gt;|' . $spaces . ')/' ] = $apos . '$1' . $closing_quote;
 		}
 
 		// '99 '99s '99's (apostrophe)  But never '9 or '99% or '999 or '99.0.
@@ -145,7 +152,7 @@ function wptexturize( $text, $reset = false ) {
 
 		// Apostrophe in a word.  No spaces, double apostrophes, or other punctuation.
 		if ( "'" !== $apos ) {
-			$dynamic[ '/(?<!' . $spaces . ')\'(?!\Z|[.,:;"\'(){}[\]\-]|&[lg]t;|' . $spaces . ')/' ] = $apos;
+			$dynamic[ '/(?<!' . $spaces . ')\'(?!\Z|[.,:;!?"\'(){}[\]\-]|&[lg]t;|' . $spaces . ')/' ] = $apos;
 		}
 
 		// 9' (prime)
@@ -155,7 +162,7 @@ function wptexturize( $text, $reset = false ) {
 
 		// Single quotes followed by spaces or ending punctuation.
 		if ( "'" !== $closing_single_quote ) {
-			$dynamic[ '/\'(?=\Z|[.,)}\-\]]|&gt;|' . $spaces . ')/' ] = $closing_single_quote;
+			$dynamic[ '/\'(?=\Z|[.,:;!?)}\-\]]|&gt;|' . $spaces . ')/' ] = $closing_single_quote;
 		}
 
 		$dynamic_characters['apos'] = array_keys( $dynamic );
@@ -3358,16 +3365,19 @@ function sanitize_option( $option, $value ) {
 	global $wpdb;
 
 	$original_value = $value;
+	$error = '';
 
 	switch ( $option ) {
 		case 'admin_email' :
 		case 'new_admin_email' :
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			$value = sanitize_email( $value );
-			if ( ! is_email( $value ) ) {
-				$value = get_option( $option ); // Resets option to stored value in the case of failed sanitization
-				if ( function_exists( 'add_settings_error' ) )
-					add_settings_error( $option, 'invalid_admin_email', __( 'The email address entered did not appear to be a valid email address. Please enter a valid email address.' ) );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				$value = sanitize_email( $value );
+				if ( ! is_email( $value ) ) {
+					$error = __( 'The email address entered did not appear to be a valid email address. Please enter a valid email address.' );
+				}
 			}
 			break;
 
@@ -3412,8 +3422,12 @@ function sanitize_option( $option, $value ) {
 		case 'blogdescription':
 		case 'blogname':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			$value = wp_kses_post( $value );
-			$value = esc_html( $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				$value = wp_kses_post( $value );
+				$value = esc_html( $value );
+			}
 			break;
 
 		case 'blog_charset':
@@ -3435,8 +3449,12 @@ function sanitize_option( $option, $value ) {
 		case 'mailserver_pass':
 		case 'upload_path':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			$value = strip_tags( $value );
-			$value = wp_kses_data( $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				$value = strip_tags( $value );
+				$value = wp_kses_data( $value );
+			}
 			break;
 
 		case 'ping_sites':
@@ -3452,23 +3470,27 @@ function sanitize_option( $option, $value ) {
 
 		case 'siteurl':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			if ( (bool)preg_match( '#http(s?)://(.+)#i', $value) ) {
-				$value = esc_url_raw($value);
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
 			} else {
-				$value = get_option( $option ); // Resets option to stored value in the case of failed sanitization
-				if ( function_exists('add_settings_error') )
-					add_settings_error('siteurl', 'invalid_siteurl', __('The WordPress address you entered did not appear to be a valid URL. Please enter a valid URL.'));
+				if ( preg_match( '#http(s?)://(.+)#i', $value ) ) {
+					$value = esc_url_raw( $value );
+				} else {
+					$error = __( 'The WordPress address you entered did not appear to be a valid URL. Please enter a valid URL.' );
+				}
 			}
 			break;
 
 		case 'home':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			if ( (bool)preg_match( '#http(s?)://(.+)#i', $value) ) {
-				$value = esc_url_raw($value);
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
 			} else {
-				$value = get_option( $option ); // Resets option to stored value in the case of failed sanitization
-				if ( function_exists('add_settings_error') )
-					add_settings_error('home', 'invalid_home', __('The Site address you entered did not appear to be a valid URL. Please enter a valid URL.'));
+				if ( preg_match( '#http(s?)://(.+)#i', $value ) ) {
+					$value = esc_url_raw( $value );
+				} else {
+					$error = __( 'The Site address you entered did not appear to be a valid URL. Please enter a valid URL.' );
+				}
 			}
 			break;
 
@@ -3484,38 +3506,45 @@ function sanitize_option( $option, $value ) {
 
 		case 'illegal_names':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			if ( ! is_array( $value ) )
-				$value = explode( ' ', $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				if ( ! is_array( $value ) )
+					$value = explode( ' ', $value );
 
-			$value = array_values( array_filter( array_map( 'trim', $value ) ) );
+				$value = array_values( array_filter( array_map( 'trim', $value ) ) );
 
-			if ( ! $value )
-				$value = '';
+				if ( ! $value )
+					$value = '';
+			}
 			break;
 
 		case 'limited_email_domains':
 		case 'banned_email_domains':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			if ( ! is_array( $value ) )
-				$value = explode( "\n", $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				if ( ! is_array( $value ) )
+					$value = explode( "\n", $value );
 
-			$domains = array_values( array_filter( array_map( 'trim', $value ) ) );
-			$value = array();
+				$domains = array_values( array_filter( array_map( 'trim', $value ) ) );
+				$value = array();
 
-			foreach ( $domains as $domain ) {
-				if ( ! preg_match( '/(--|\.\.)/', $domain ) && preg_match( '|^([a-zA-Z0-9-\.])+$|', $domain ) )
-					$value[] = $domain;
+				foreach ( $domains as $domain ) {
+					if ( ! preg_match( '/(--|\.\.)/', $domain ) && preg_match( '|^([a-zA-Z0-9-\.])+$|', $domain ) ) {
+						$value[] = $domain;
+					}
+				}
+				if ( ! $value )
+					$value = '';
 			}
-			if ( ! $value )
-				$value = '';
 			break;
 
 		case 'timezone_string':
 			$allowed_zones = timezone_identifiers_list();
 			if ( ! in_array( $value, $allowed_zones ) && ! empty( $value ) ) {
-				$value = get_option( $option ); // Resets option to stored value in the case of failed sanitization
-				if ( function_exists('add_settings_error') )
-					add_settings_error('timezone_string', 'invalid_timezone_string', __('The timezone you have entered is not valid. Please select a valid timezone.') );
+				$error = __( 'The timezone you have entered is not valid. Please select a valid timezone.' );
 			}
 			break;
 
@@ -3523,8 +3552,12 @@ function sanitize_option( $option, $value ) {
 		case 'category_base':
 		case 'tag_base':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			$value = esc_url_raw( $value );
-			$value = str_replace( 'http://', '', $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				$value = esc_url_raw( $value );
+				$value = str_replace( 'http://', '', $value );
+			}
 			break;
 
 		case 'default_role' :
@@ -3535,11 +3568,22 @@ function sanitize_option( $option, $value ) {
 		case 'moderation_keys':
 		case 'blacklist_keys':
 			$value = $wpdb->strip_invalid_text_for_column( $wpdb->options, 'option_value', $value );
-			$value = explode( "\n", $value );
-			$value = array_filter( array_map( 'trim', $value ) );
-			$value = array_unique( $value );
-			$value = implode( "\n", $value );
+			if ( is_wp_error( $value ) ) {
+				$error = $value->get_error_message();
+			} else {
+				$value = explode( "\n", $value );
+				$value = array_filter( array_map( 'trim', $value ) );
+				$value = array_unique( $value );
+				$value = implode( "\n", $value );
+			}
 			break;
+	}
+
+	if ( ! empty( $error ) ) {
+		$value = get_option( $option );
+		if ( function_exists( 'add_settings_error' ) ) {
+			add_settings_error( $option, "invalid_{$option}", $error );
+		}
 	}
 
 	/**
