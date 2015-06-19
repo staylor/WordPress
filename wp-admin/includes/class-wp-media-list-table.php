@@ -620,4 +620,22 @@ class WP_Media_List_Table extends WP_List_Table {
 		 */
 		return apply_filters( 'media_row_actions', $actions, $post, $this->detached );
 	}
+
+	/**
+	 * Generate and display row actions links.
+	 *
+	 * @since 4.3.0
+	 * @access protected
+	 *
+	 * @param object $post        Attachment being acted upon.
+	 * @param string $column_name Current column name.
+	 * @param string $primary     Primary column name.
+	 * @return string Row actions output for media attachments.
+	 */
+	protected function handle_row_actions( $post, $column_name, $primary ) {
+		if ( $primary === $column_name ) {
+			$att_title = _draft_or_post_title();
+			return $this->row_actions( $this->_get_row_actions( $post, $att_title ) );
+		}
+	}
 }

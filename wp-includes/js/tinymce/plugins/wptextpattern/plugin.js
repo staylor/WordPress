@@ -13,6 +13,7 @@
 ( function( tinymce, setTimeout ) {
 	tinymce.PluginManager.add( 'wptextpattern', function( editor ) {
 		var $$ = editor.$,
+			VK = tinymce.util.VK,
 			patterns = [],
 			canUndo = false;
 
@@ -52,7 +53,7 @@
 		} );
 
 		editor.on( 'keydown', function( event ) {
-			if ( canUndo && event.keyCode === tinymce.util.VK.BACKSPACE ) {
+			if ( canUndo && ( event.keyCode === VK.BACKSPACE || event.keyCode === 27 /* ESCAPE */ ) ) {
 				editor.undoManager.undo();
 				event.preventDefault();
 			}
@@ -61,7 +62,7 @@
 		editor.on( 'keyup', function( event ) {
 			var rng, node, text, parent, child;
 
-			if ( event.keyCode !== tinymce.util.VK.SPACEBAR ) {
+			if ( event.keyCode !== VK.SPACEBAR ) {
 				return;
 			}
 
@@ -87,6 +88,10 @@
 				}
 			}
 
+			if ( ! child.nodeValue ) {
+				child = child.nextSibling;
+			}
+
 			if ( child !== node ) {
 				return;
 			}
@@ -109,10 +114,18 @@
 				editor.undoManager.add();
 
 				editor.undoManager.transact( function() {
+					var $$parent;
+
 					if ( replace ) {
 						$$( node ).replaceWith( document.createTextNode( replace ) );
 					} else  {
-						$$( node.parentNode ).empty().append( '<br>' );
+						$$parent = $$( node.parentNode );
+
+						$$( node ).remove();
+
+						if ( ! $$parent.html() ) {
+							$$parent.append( '<br>' );
+						}
 					}
 
 					editor.selection.setCursorLocation( parent );

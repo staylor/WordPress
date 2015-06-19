@@ -1484,7 +1484,7 @@ function wp_mkdir_p( $target ) {
 	$wrapper = null;
 
 	// Strip the protocol.
-	if( wp_is_stream( $target ) ) {
+	if ( wp_is_stream( $target ) ) {
 		list( $wrapper, $target ) = explode( '://', $target, 2 );
 	}
 
@@ -1492,7 +1492,7 @@ function wp_mkdir_p( $target ) {
 	$target = str_replace( '//', '/', $target );
 
 	// Put the wrapper back on the target.
-	if( $wrapper !== null ) {
+	if ( $wrapper !== null ) {
 		$target = $wrapper . '://' . $target;
 	}
 
@@ -4505,7 +4505,9 @@ function send_frame_options_header() {
  *
  * @staticvar array $protocols
  *
- * @return array Array of allowed protocols.
+ * @return array Array of allowed protocols. Defaults to an array containing 'http', 'https',
+ *               'ftp', 'ftps', 'mailto', 'news', 'irc', 'gopher', 'nntp', 'feed', 'telnet',
+ *               'mms', 'rtsp', 'svn', 'tel', 'fax', 'xmpp', and 'webcal'.
  */
 function wp_allowed_protocols() {
 	static $protocols = array();
@@ -4911,4 +4913,37 @@ function wp_delete_file( $file ) {
 	if ( ! empty( $delete ) ) {
 		@unlink( $delete );
 	}
+}
+
+/**
+ * Outputs a small JS snippet on preview tabs/windows to remove `window.name` on unload.
+ * This prevents reusing the same tab for a preview when the user has navigated away.
+ *
+ * @since 4.3.0
+ */
+function wp_post_preview_js() {
+	global $post;
+
+	if ( ! is_preview() || empty( $post ) ) {
+		return;
+	}
+
+	// Has to match the window name used in post_submit_meta_box()
+	$name = 'wp-preview-' . (int) $post->ID;
+
+	?>
+	<script>
+	( function() {
+		var query = document.location.search;
+
+		if ( query && query.indexOf( 'preview=true' ) !== -1 ) {
+			window.name = '<?php echo $name; ?>';
+		}
+
+		if ( window.addEventListener ) {
+			window.addEventListener( 'unload', function() { window.name = ''; }, false );
+		}
+	}());
+	</script>
+	<?php
 }

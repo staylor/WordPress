@@ -139,7 +139,7 @@ class Walker_Nav_Menu_Edit extends Walker_Nav_Menu {
 			</dl>
 
 			<div class="menu-item-settings" id="menu-item-settings-<?php echo $item_id; ?>">
-				<?php if( 'custom' == $item->type ) : ?>
+				<?php if ( 'custom' == $item->type ) : ?>
 					<p class="field-url description description-wide">
 						<label for="edit-menu-item-url-<?php echo $item_id; ?>">
 							<?php _e( 'URL' ); ?><br />
@@ -197,7 +197,7 @@ class Walker_Nav_Menu_Edit extends Walker_Nav_Menu {
 				</p>
 
 				<div class="menu-item-actions description-wide submitbox">
-					<?php if( 'custom' != $item->type && $original_title !== false ) : ?>
+					<?php if ( 'custom' != $item->type && $original_title !== false ) : ?>
 						<p class="link-to-original">
 							<?php printf( __('Original: %s'), '<a href="' . esc_attr( $item->url ) . '">' . esc_html( $original_title ) . '</a>' ); ?>
 						</p>
@@ -459,7 +459,7 @@ function wp_nav_menu_setup() {
 	add_filter( 'manage_nav-menus_columns', 'wp_nav_menu_manage_columns' );
 
 	// If first time editing, disable advanced items by default.
-	if( false === get_user_option( 'managenav-menuscolumnshidden' ) ) {
+	if ( false === get_user_option( 'managenav-menuscolumnshidden' ) ) {
 		$user = wp_get_current_user();
 		update_user_option($user->ID, 'managenav-menuscolumnshidden',
 			array( 0 => 'link-target', 1 => 'css-classes', 2 => 'xfn', 3 => 'description', 4 => 'title-attribute', ),
@@ -468,7 +468,7 @@ function wp_nav_menu_setup() {
 }
 
 /**
- * Limit the amount of meta boxes to just links, pages and cats for first time users.
+ * Limit the amount of meta boxes to pages, posts, links, and categories for first time users.
  *
  * @since 3.0.0
  *
@@ -480,7 +480,7 @@ function wp_initial_nav_menu_meta_boxes() {
 	if ( get_user_option( 'metaboxhidden_nav-menus' ) !== false || ! is_array($wp_meta_boxes) )
 		return;
 
-	$initial_meta_boxes = array( 'nav-menu-theme-locations', 'add-page', 'add-custom-links', 'add-category' );
+	$initial_meta_boxes = array( 'add-page', 'add-post', 'add-custom-links', 'add-category' );
 	$hidden_meta_boxes = array();
 
 	foreach ( array_keys($wp_meta_boxes['nav-menus']) as $context ) {
@@ -728,6 +728,19 @@ function wp_nav_menu_item_post_type_meta_box( $object, $post_type ) {
 				$recent_args = array_merge( $args, array( 'orderby' => 'post_date', 'order' => 'DESC', 'posts_per_page' => 15 ) );
 				$most_recent = $get_posts->query( $recent_args );
 				$args['walker'] = $walker;
+
+				/**
+				 * Filter the posts displayed in the 'Most Recent' tab of the current
+				 * post type's menu items meta box.
+				 *
+				 * @since 4.3.0
+				 *
+				 * @param array  $most_recent An array of post objects being listed.
+				 * @param array  $args        An array of WP_Query arguments.
+				 * @param object $post_type   The current post type object for this menu item meta box.
+				 */
+				$most_recent = apply_filters( "nav_menu_items_{$post_type_name}_recent", $most_recent, $args, $post_type );
+
 				echo walk_nav_menu_tree( array_map('wp_setup_nav_menu_item', $most_recent), 0, (object) $args );
 				?>
 			</ul>
@@ -1180,7 +1193,7 @@ function wp_get_nav_menu_to_edit( $menu_id = 0 ) {
 		$result .= '<p>' . __( 'Add menu items from the column on the left.' ) . '</p>';
 		$result .= '</div>';
 
-		if( empty($menu_items) )
+		if ( empty($menu_items) )
 			return $result . ' <ul class="menu" id="menu-to-edit"> </ul>';
 
 		/**

@@ -460,7 +460,7 @@ function get_post( $post = null, $output = OBJECT, $filter = 'raw' ) {
  * @since 3.5.0
  *
  * @property string $page_template
- * 
+ *
  * @property-read array  $ancestors
  * @property-read int    $post_category
  * @property-read string $tag_input
@@ -1676,7 +1676,7 @@ function get_post_type_labels( $post_type_object ) {
 	 *
 	 * @see get_post_type_labels() for the full list of labels.
 	 *
-	 * @param array $labels Array of labels for the given post type.
+	 * @param object $labels Object with labels for the post type as member variables.
 	 */
 	return apply_filters( "post_type_labels_{$post_type}", $labels );
 }
@@ -3294,7 +3294,7 @@ function wp_insert_post( $postarr, $wp_error = false ) {
 			if ( mysql2date('U', $post_date_gmt, false) > mysql2date('U', $now, false) ) {
 				$post_status = 'future';
 			}
-		} elseif( 'future' == $post_status ) {
+		} elseif ( 'future' == $post_status ) {
 			$now = gmdate('Y-m-d H:i:59');
 			if ( mysql2date('U', $post_date_gmt, false) <= mysql2date('U', $now, false) ) {
 				$post_status = 'publish';
