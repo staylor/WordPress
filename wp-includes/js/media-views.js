@@ -3182,7 +3182,6 @@ Details = Attachment.extend({
 		'click .trash-attachment':        'trashAttachment',
 		'click .untrash-attachment':      'untrashAttachment',
 		'click .edit-attachment':         'editAttachment',
-		'click .refresh-attachment':      'refreshAttachment',
 		'keydown':                        'toggleSelectionHandler'
 	},
 
@@ -3257,14 +3256,6 @@ Details = Attachment.extend({
 		} else {
 			this.$el.addClass('needs-refresh');
 		}
-	},
-	/**
-	 * @param {Object} event
-	 */
-	refreshAttachment: function( event ) {
-		this.$el.removeClass('needs-refresh');
-		event.preventDefault();
-		this.model.fetch();
 	},
 	/**
 	 * When reverse tabbing(shift+tab) out of the right details panel, deliver
@@ -7874,7 +7865,7 @@ EditorUploader = View.extend({
 	 * @param  {jQuery.Event} event The 'drop' event.
 	 */
 	drop: function( event ) {
-		var $wrap = null, uploadView;
+		var $wrap, uploadView;
 
 		this.containerDragleave( event );
 		this.dropzoneDragleave( event );
@@ -7891,13 +7882,15 @@ EditorUploader = View.extend({
 		}
 
 		if ( ! this.workflow ) {
-			this.workflow = wp.media.editor.open( 'content', {
+			this.workflow = wp.media.editor.open( window.wpActiveEditor, {
 				frame:    'post',
 				state:    'insert',
 				title:    l10n.addMedia,
 				multiple: true
 			});
+
 			uploadView = this.workflow.uploader;
+
 			if ( uploadView.uploader && uploadView.uploader.ready ) {
 				this.addFiles.apply( this );
 			} else {
@@ -8224,7 +8217,7 @@ UploaderStatus = View.extend({
 	 * @returns {string}
 	 */
 	filename: function( filename ) {
-		return wp.media.truncate( _.escape( filename ), 24 );
+		return _.escape( filename );
 	},
 	/**
 	 * @param {Backbone.Model} error

@@ -721,6 +721,7 @@ class WP_Customize_Media_Control extends WP_Customize_Control {
 		$this->json['label'] = html_entity_decode( $this->label, ENT_QUOTES, get_bloginfo( 'charset' ) );
 		$this->json['mime_type'] = $this->mime_type;
 		$this->json['button_labels'] = $this->button_labels;
+		$this->json['canUpload'] = current_user_can( 'upload_files' );
 
 		$value = $this->value();
 
@@ -823,9 +824,11 @@ class WP_Customize_Media_Control extends WP_Customize_Control {
 				</div>
 			</div>
 			<div class="actions">
+				<# if ( data.canUpload ) { #>
 				<button type="button" class="button remove-button"><?php echo $this->button_labels['remove']; ?></button>
 				<button type="button" class="button upload-button" id="{{ data.settings['default'] }}-button"><?php echo $this->button_labels['change']; ?></button>
 				<div style="clear:both"></div>
+				<# } #>
 			</div>
 		<# } else { #>
 			<div class="current">
@@ -843,7 +846,9 @@ class WP_Customize_Media_Control extends WP_Customize_Control {
 				<# if ( data.defaultAttachment ) { #>
 					<button type="button" class="button default-button"><?php echo $this->button_labels['default']; ?></button>
 				<# } #>
+				<# if ( data.canUpload ) { #>
 				<button type="button" class="button upload-button" id="{{ data.settings['default'] }}-button"><?php echo $this->button_labels['select']; ?></button>
+				<# } #>
 				<div style="clear:both"></div>
 			</div>
 		<# } #>
@@ -1158,8 +1163,6 @@ class WP_Customize_Header_Image_Control extends WP_Customize_Image_Control {
 		$width = absint( get_theme_support( 'custom-header', 'width' ) );
 		$height = absint( get_theme_support( 'custom-header', 'height' ) );
 		?>
-
-
 		<div class="customize-control-content">
 			<p class="customizer-section-intro">
 				<?php
@@ -1180,11 +1183,13 @@ class WP_Customize_Header_Image_Control extends WP_Customize_Image_Control {
 				</div>
 			</div>
 			<div class="actions">
+				<?php if ( current_user_can( 'upload_files' ) ): ?>
 				<?php /* translators: Hide as in hide header image via the Customizer */ ?>
 				<button type="button"<?php echo $visibility ?> class="button remove"><?php _ex( 'Hide image', 'custom header' ); ?></button>
 				<?php /* translators: New as in add new header image via the Customizer */ ?>
 				<button type="button" class="button new"><?php _ex( 'Add new image', 'header image' ); ?></button>
 				<div style="clear:both"></div>
+				<?php endif; ?>
 			</div>
 			<div class="choices">
 				<span class="customize-control-title header-previously-uploaded">
@@ -1558,7 +1563,7 @@ class WP_Customize_Nav_Menu_Item_Control extends WP_Customize_Control {
 				<span class="item-type">{{ data.item_type_label }}</span>
 				<span class="item-title">
 					<span class="spinner"></span>
-					<span class="menu-item-title">{{ data.title }}</span>
+					<span class="menu-item-title<# if ( ! data.title ) { #> no-title<# } #>">{{ data.title || wp.customize.Menus.data.l10n.untitled }}</span>
 				</span>
 				<span class="item-controls">
 					<button type="button" class="not-a-button item-edit"><span class="screen-reader-text"><?php _e( 'Edit Menu Item' ); ?></span></button>
@@ -1617,7 +1622,7 @@ class WP_Customize_Nav_Menu_Item_Control extends WP_Customize_Control {
 			<div class="menu-item-actions description-thin submitbox">
 				<# if ( 'custom' != data.item_type && '' != data.original_title ) { #>
 				<p class="link-to-original">
-					<?php printf( __( 'Original: %s' ), '<a class="original-link" href="{{ data.url }}">{{{ data.original_title }}}</a>' ); ?>
+					<?php printf( __( 'Original: %s' ), '<a class="original-link" href="{{ data.url }}">{{ data.original_title }}</a>' ); ?>
 				</p>
 				<# } #>
 

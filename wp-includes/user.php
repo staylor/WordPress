@@ -2023,7 +2023,7 @@ function wp_insert_user( $userdata ) {
 
 	$meta['rich_editing'] = empty( $userdata['rich_editing'] ) ? 'true' : $userdata['rich_editing'];
 
-	$meta['comment_shortcuts'] = empty( $userdata['comment_shortcuts'] ) ? 'false' : $userdata['comment_shortcuts'];
+	$meta['comment_shortcuts'] = empty( $userdata['comment_shortcuts'] ) || 'false' === $userdata['comment_shortcuts'] ? 'false' : 'true';
 
 	$admin_color = empty( $userdata['admin_color'] ) ? 'fresh' : $userdata['admin_color'];
 	$meta['admin_color'] = preg_replace( '|[^a-z0-9 _.\-@]|i', '', $admin_color );
@@ -2156,7 +2156,7 @@ function wp_update_user($userdata) {
 		/**
 		 * Filter to stop the sending of the password change email.
 		 *
-		 * @since 4.3
+		 * @since 4.3.0
 		 * @see  wp_insert_user() For $user and $userdata fields.
 		 *
 		 * @param bool Return false to not send the email.
@@ -2171,7 +2171,7 @@ function wp_update_user($userdata) {
 		/**
 		 * Filter to stop the sending of the email change email.
 		 *
-		 * @since 4.3
+		 * @since 4.3.0
 		 * @see  wp_insert_user() For $user and $userdata fields.
 		 *
 		 * @param bool Return false to not send the email.
@@ -2218,7 +2218,7 @@ All at ###SITENAME###
 			/**
 			 * Filter the email sent when the user's password is changed.
 			 *
-			 * @since 4.3
+			 * @since 4.3.0
 			 *
 			 * @param array $pass_change_email {
 			 *            Used to build wp_mail(). https://developer.wordpress.org/reference/functions/wp_mail/
@@ -2273,7 +2273,7 @@ All at ###SITENAME###
 			/**
 			 * Filter the email sent when the user's password is changed.
 			 *
-			 * @since 4.3
+			 * @since 4.3.0
 			 *
 			 * @param array $email_change_email {
 			 *            Used to build wp_mail(). https://developer.wordpress.org/reference/functions/wp_mail/

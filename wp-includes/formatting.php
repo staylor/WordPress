@@ -1503,11 +1503,7 @@ function sanitize_html_class( $class, $fallback = '' ) {
 }
 
 /**
- * Converts a number of characters from a string.
- *
- * Metadata tags `<title>` and `<category>` are removed, `<br>` and `<hr>` are
- * converted into correct XHTML and Unicode characters are converted to the
- * valid range.
+ * Converts lone & characters into `&#038;` (a.k.a. `&amp;`)
  *
  * @since 0.71
  *
@@ -1516,58 +1512,64 @@ function sanitize_html_class( $class, $fallback = '' ) {
  * @return string Converted string.
  */
 function convert_chars( $content, $deprecated = '' ) {
-	if ( !empty( $deprecated ) )
+	if ( ! empty( $deprecated ) ) {
 		_deprecated_argument( __FUNCTION__, '0.71' );
+	}
 
-	// Translation of invalid Unicode references range to valid range
+	if ( strpos( $content, '&' ) !== false ) {
+		$content = preg_replace( '/&([^#])(?![a-z1-4]{1,8};)/i', '&#038;$1', $content );
+	}
+
+	return $content;
+}
+
+/**
+ * Converts invalid Unicode references range to valid range.
+ *
+ * @since 4.3.0
+ *
+ * @param string $content String with entities that need converting.
+ * @return string Converted string.
+ */
+function convert_invalid_entities( $content ) {
 	$wp_htmltranswinuni = array(
-	'&#128;' => '&#8364;', // the Euro sign
-	'&#129;' => '',
-	'&#130;' => '&#8218;', // these are Windows CP1252 specific characters
-	'&#131;' => '&#402;',  // they would look weird on non-Windows browsers
-	'&#132;' => '&#8222;',
-	'&#133;' => '&#8230;',
-	'&#134;' => '&#8224;',
-	'&#135;' => '&#8225;',
-	'&#136;' => '&#710;',
-	'&#137;' => '&#8240;',
-	'&#138;' => '&#352;',
-	'&#139;' => '&#8249;',
-	'&#140;' => '&#338;',
-	'&#141;' => '',
-	'&#142;' => '&#381;',
-	'&#143;' => '',
-	'&#144;' => '',
-	'&#145;' => '&#8216;',
-	'&#146;' => '&#8217;',
-	'&#147;' => '&#8220;',
-	'&#148;' => '&#8221;',
-	'&#149;' => '&#8226;',
-	'&#150;' => '&#8211;',
-	'&#151;' => '&#8212;',
-	'&#152;' => '&#732;',
-	'&#153;' => '&#8482;',
-	'&#154;' => '&#353;',
-	'&#155;' => '&#8250;',
-	'&#156;' => '&#339;',
-	'&#157;' => '',
-	'&#158;' => '&#382;',
-	'&#159;' => '&#376;'
+		'&#128;' => '&#8364;', // the Euro sign
+		'&#129;' => '',
+		'&#130;' => '&#8218;', // these are Windows CP1252 specific characters
+		'&#131;' => '&#402;',  // they would look weird on non-Windows browsers
+		'&#132;' => '&#8222;',
+		'&#133;' => '&#8230;',
+		'&#134;' => '&#8224;',
+		'&#135;' => '&#8225;',
+		'&#136;' => '&#710;',
+		'&#137;' => '&#8240;',
+		'&#138;' => '&#352;',
+		'&#139;' => '&#8249;',
+		'&#140;' => '&#338;',
+		'&#141;' => '',
+		'&#142;' => '&#381;',
+		'&#143;' => '',
+		'&#144;' => '',
+		'&#145;' => '&#8216;',
+		'&#146;' => '&#8217;',
+		'&#147;' => '&#8220;',
+		'&#148;' => '&#8221;',
+		'&#149;' => '&#8226;',
+		'&#150;' => '&#8211;',
+		'&#151;' => '&#8212;',
+		'&#152;' => '&#732;',
+		'&#153;' => '&#8482;',
+		'&#154;' => '&#353;',
+		'&#155;' => '&#8250;',
+		'&#156;' => '&#339;',
+		'&#157;' => '',
+		'&#158;' => '&#382;',
+		'&#159;' => '&#376;'
 	);
 
-	// Remove metadata tags
-	$content = preg_replace('/<title>(.+?)<\/title>/','',$content);
-	$content = preg_replace('/<category>(.+?)<\/category>/','',$content);
-
-	// Converts lone & characters into &#38; (a.k.a. &amp;)
-	$content = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/i', '&#038;$1', $content);
-
-	// Fix Word pasting
-	$content = strtr($content, $wp_htmltranswinuni);
-
-	// Just a little XHTML help
-	$content = str_replace('<br>', '<br />', $content);
-	$content = str_replace('<hr>', '<hr />', $content);
+	if ( strpos( $content, '&#1' ) !== false ) {
+		$content = strtr( $content, $wp_htmltranswinuni );
+	}
 
 	return $content;
 }
@@ -3060,66 +3062,35 @@ function ent2ncr( $text ) {
 }
 
 /**
- * Formats text for the rich text editor.
+ * Formats text for the editor.
  *
- * The filter 'richedit_pre' is applied here. If $text is empty the filter will
+ * Generally the browsers treat everything inside a textarea as text, but
+ * it is still a good idea to HTML entity encode `<`, `>` and `&` in the content.
+ *
+ * The filter 'format_for_editor' is applied here. If $text is empty the filter will
  * be applied to an empty string.
  *
- * @since 2.0.0
+ * @since 4.3.0
  *
  * @param string $text The text to be formatted.
  * @return string The formatted text after filter is applied.
  */
-function wp_richedit_pre( $text ) {
-	if ( empty( $text ) ) {
-		/**
-		 * Filter text returned for the rich text editor.
-		 *
-		 * This filter is first evaluated, and the value returned, if an empty string
-		 * is passed to wp_richedit_pre(). If an empty string is passed, it results
-		 * in a break tag and line feed.
-		 *
-		 * If a non-empty string is passed, the filter is evaluated on the wp_richedit_pre()
-		 * return after being formatted.
-		 *
-		 * @since 2.0.0
-		 *
-		 * @param string $output Text for the rich text editor.
-		 */
-		return apply_filters( 'richedit_pre', '' );
+function format_for_editor( $text, $default_editor = null ) {
+	// Back-compat: check if any characters need encoding.
+	if ( ! empty( $text ) && ( false !== strpos( $text, '<' ) || false !== strpos( $text, '>' ) ||
+		preg_match( '/&(?!#(?:\d+|x[a-f0-9]+);|[a-z1-4]{1,8};)/i', $text ) ) ) {
+
+		$text = htmlspecialchars( $text, ENT_NOQUOTES, get_option( 'blog_charset' ) );
 	}
 
-	$output = convert_chars($text);
-	$output = wpautop($output);
-	$output = htmlspecialchars($output, ENT_NOQUOTES, get_option( 'blog_charset' ) );
-
-	/** This filter is documented in wp-includes/formatting.php */
-	return apply_filters( 'richedit_pre', $output );
-}
-
-/**
- * Formats text for the HTML editor.
- *
- * Unless $output is empty it will pass through htmlspecialchars before the
- * 'htmledit_pre' filter is applied.
- *
- * @since 2.5.0
- *
- * @param string $output The text to be formatted.
- * @return string Formatted text after filter applied.
- */
-function wp_htmledit_pre( $output ) {
-	if ( !empty($output) )
-		$output = htmlspecialchars($output, ENT_NOQUOTES, get_option( 'blog_charset' ) ); // convert only < > &
-
 	/**
-	 * Filter the text before it is formatted for the HTML editor.
+	 * Filter the text after it is formatted for the editor.
 	 *
-	 * @since 2.5.0
+	 * @since 4.3.0
 	 *
-	 * @param string $output The HTML-formatted text.
+	 * @param string $text The formatted text.
 	 */
-	return apply_filters( 'htmledit_pre', $output );
+	return apply_filters( 'format_for_editor', $text, $default_editor );
 }
 
 /**

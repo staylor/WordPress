@@ -109,9 +109,14 @@ final class WP_Customize_Nav_Menus {
 				'post_type'   => $taxonomy_or_post_type,
 			) );
 			foreach ( $posts as $post ) {
+				$post_title = $post->post_title;
+				if ( '' === $post_title ) {
+					/* translators: %d: ID of a post */
+					$post_title = sprintf( __( '#%d (no title)' ), $post->ID );
+				}
 				$items[] = array(
 					'id'         => "post-{$post->ID}",
-					'title'      => html_entity_decode( get_the_title( $post ), ENT_QUOTES, get_bloginfo( 'charset' ) ),
+					'title'      => html_entity_decode( $post_title, ENT_QUOTES, get_bloginfo( 'charset' ) ),
 					'type'       => 'post_type',
 					'type_label' => get_post_type_object( $post->post_type )->labels->singular_name,
 					'object'     => $post->post_type,
@@ -216,13 +221,18 @@ final class WP_Customize_Nav_Menus {
 		// Check if any posts were found.
 		if ( $get_posts->post_count ) {
 			foreach ( $get_posts->posts as $post ) {
+				$post_title = $post->post_title;
+				if ( '' === $post_title ) {
+					/* translators: %d: ID of a post */
+					$post_title = sprintf( __( '#%d (no title)' ), $post->ID );
+				}
 				$results[] = array(
 					'id'         => 'post-' . $post->ID,
 					'type'       => 'post_type',
 					'type_label' => $post_type_objects[ $post->post_type ]->labels->singular_name,
 					'object'     => $post->post_type,
 					'object_id'  => intval( $post->ID ),
-					'title'      => html_entity_decode( get_the_title( $post ), ENT_QUOTES, get_bloginfo( 'charset' ) ),
+					'title'      => html_entity_decode( $post_title, ENT_QUOTES, get_bloginfo( 'charset' ) ),
 				);
 			}
 		}
@@ -270,7 +280,7 @@ final class WP_Customize_Nav_Menus {
 			'allMenus'             => wp_get_nav_menus(),
 			'itemTypes'            => $this->available_item_types(),
 			'l10n'                 => array(
-				'untitled'          => _x( '(no label)', 'Missing menu item navigation label.' ),
+				'untitled'          => _x( '(no label)', 'missing menu item navigation label' ),
 				'custom_label'      => __( 'Custom Link' ),
 				/* translators: %s: Current menu location */
 				'menuLocation'      => __( '(Currently set to: %s)' ),
@@ -570,7 +580,9 @@ final class WP_Customize_Nav_Menus {
 				<div class="menu-item-bar">
 					<div class="menu-item-handle">
 						<span class="item-type">{{ data.type_label }}</span>
-						<span class="item-title">{{ data.title || wp.customize.Menus.data.l10n.untitled }}</span>
+						<span class="item-title">
+							<span class="menu-item-title<# if ( ! data.title ) { #> no-title<# } #>">{{ data.title || wp.customize.Menus.data.l10n.untitled }}</span>
+						</span>
 						<button type="button" class="not-a-button item-add"><span class="screen-reader-text"><?php _e( 'Add Menu Item' ) ?></span></button>
 					</div>
 				</div>
