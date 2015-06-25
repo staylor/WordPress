@@ -738,6 +738,15 @@ class WP_Press_This {
 					}
 				}
 			}
+
+			// Support passing a single image src as `i`
+			if ( ! empty( $_REQUEST['i'] ) && ( $img_src = $this->_limit_img( wp_unslash( $_REQUEST['i'] ) ) ) ) {
+				if ( empty( $data['_images'] ) ) {
+					$data['_images'] = array( $img_src );
+				} elseif ( ! in_array( $img_src, $data['_images'], true ) ) {
+					array_unshift( $data['_images'], $img_src );
+				}
+			}
 		}
 
 		/**
@@ -1458,11 +1467,11 @@ class WP_Press_This {
 						<span class="screen-reader-text"><?php _e('Toggle dropdown'); ?></span>
 					</button>
 				</div>
-				<div class="split-button-body">
-					<button type="button" class="button-subtle draft-button split-button-option" aria-live="polite"><?php _e( 'Save Draft' ); ?></button>
-					<a href="<?php echo esc_url( get_edit_post_link( $post_ID ) ); ?>" class="edit-post-link split-button-option" target="_blank"><?php _e( 'Standard Editor' ); ?></a>
-					<button type="button" class="button-subtle preview-button split-button-option"><?php _e( 'Preview' ); ?></button>
-				</div>
+				<ul class="split-button-body">
+					<li><button type="button" class="button-subtle draft-button split-button-option" aria-live="polite"><?php _e( 'Save Draft' ); ?></button></li>
+					<li><a href="<?php echo esc_url( get_edit_post_link( $post_ID ) ); ?>" class="edit-post-link split-button-option" target="_blank"><?php _e( 'Standard Editor' ); ?></a></li>
+					<li><button type="button" class="button-subtle preview-button split-button-option"><?php _e( 'Preview' ); ?></button></li>
+				</ul>
 			</div>
 		</div>
 	</div>
