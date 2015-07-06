@@ -120,7 +120,8 @@ final class WP_Customize_Nav_Menus {
 					'type'       => 'post_type',
 					'type_label' => get_post_type_object( $post->post_type )->labels->singular_name,
 					'object'     => $post->post_type,
-					'object_id'  => (int) $post->ID,
+					'object_id'  => intval( $post->ID ),
+					'url'        => get_permalink( intval( $post->ID ) ),
 				);
 			}
 		} elseif ( 'taxonomy' === $obj_type ) {
@@ -147,7 +148,8 @@ final class WP_Customize_Nav_Menus {
 					'type'       => 'taxonomy',
 					'type_label' => get_taxonomy( $term->taxonomy )->labels->singular_name,
 					'object'     => $term->taxonomy,
-					'object_id'  => $term->term_id,
+					'object_id'  => intval( $term->term_id ),
+					'url'        => get_term_link( intval( $term->term_id ), $term->taxonomy ),
 				);
 			}
 		}
@@ -228,11 +230,12 @@ final class WP_Customize_Nav_Menus {
 				}
 				$results[] = array(
 					'id'         => 'post-' . $post->ID,
+					'title'      => html_entity_decode( $post_title, ENT_QUOTES, get_bloginfo( 'charset' ) ),
 					'type'       => 'post_type',
 					'type_label' => $post_type_objects[ $post->post_type ]->labels->singular_name,
 					'object'     => $post->post_type,
 					'object_id'  => intval( $post->ID ),
-					'title'      => html_entity_decode( $post_title, ENT_QUOTES, get_bloginfo( 'charset' ) ),
+					'url'        => get_permalink( intval( $post->ID ) ),
 				);
 			}
 		}
@@ -250,11 +253,12 @@ final class WP_Customize_Nav_Menus {
 			foreach ( $terms as $term ) {
 				$results[] = array(
 					'id'         => 'term-' . $term->term_id,
+					'title'      => html_entity_decode( $term->name, ENT_QUOTES, get_bloginfo( 'charset' ) ),
 					'type'       => 'taxonomy',
 					'type_label' => get_taxonomy( $term->taxonomy )->labels->singular_name,
 					'object'     => $term->taxonomy,
 					'object_id'  => intval( $term->term_id ),
-					'title'      => html_entity_decode( $term->name, ENT_QUOTES, get_bloginfo( 'charset' ) ),
+					'url'        => get_term_link( intval( $term->term_id ), $term->taxonomy ),
 				);
 			}
 		}
@@ -281,6 +285,7 @@ final class WP_Customize_Nav_Menus {
 			'itemTypes'            => $this->available_item_types(),
 			'l10n'                 => array(
 				'untitled'          => _x( '(no label)', 'missing menu item navigation label' ),
+				'unnamed'           => _x( '(unnamed)', 'Missing menu name.' ),
 				'custom_label'      => __( 'Custom Link' ),
 				/* translators: %s: Current menu location */
 				'menuLocation'      => __( '(Currently set to: %s)' ),
@@ -304,6 +309,8 @@ final class WP_Customize_Nav_Menus {
 				'itemsFound'        => __( 'Number of items found: %d' ),
 				'itemsFoundMore'    => __( 'Additional items found: %d' ),
 				'itemsLoadingMore'  => __( 'Loading more results... please wait.' ),
+				'reorderModeOn'     => __( 'Reorder mode enabled' ),
+				'reorderModeOff'    => __( 'Reorder mode closed' ),
 			),
 			'menuItemTransport'    => 'postMessage',
 			'phpIntMax'            => PHP_INT_MAX,
@@ -399,9 +406,15 @@ final class WP_Customize_Nav_Menus {
 		$this->manager->register_control_type( 'WP_Customize_Nav_Menu_Item_Control' );
 
 		// Create a panel for Menus.
+		$description = '<p>' . __( 'This panel is used for managing navigation menus for content you have already published on your site. You can create menus and add items for existing content such as pages, posts, categories, tags, formats, or custom links.' ) . '</p>';
+		if ( current_theme_supports( 'widgets' ) ) {
+			$description .= '<p>' . sprintf( __( 'Menus can be displayed in locations defined by your theme or in <a href="%s">widget areas</a> by adding a &#8220;Custom Menu&#8221; widget.' ), "javascript:wp.customize.panel( 'widgets' ).focus();" ) . '</p>';
+		} else {
+			$description .= '<p>' . __( 'Menus can be displayed in locations defined by your theme.' ) . '</p>';
+		}
 		$this->manager->add_panel( new WP_Customize_Nav_Menus_Panel( $this->manager, 'nav_menus', array(
 			'title'       => __( 'Menus' ),
-			'description' => '<p>' . __( 'This panel is used for managing navigation menus for content you have already published on your site. You can create menus and add items for existing content such as pages, posts, categories, tags, formats, or custom links.' ) . '</p><p>' . __( 'Menus can be displayed in locations defined by your theme or in widget areas by adding a "Custom Menu" widget.' ) . '</p>',
+			'description' => $description,
 			'priority'    => 100,
 			// 'theme_supports' => 'menus|widgets', @todo allow multiple theme supports
 		) ) );
@@ -753,17 +766,17 @@ final class WP_Customize_Nav_Menus {
 		$args['instance_number'] = $this->preview_nav_menu_instance_number;
 
 		$can_partial_refresh = (
-			$args['echo']
+			! empty( $args['echo'] )
 			&&
-			is_string( $args['fallback_cb'] )
+			( empty( $args['fallback_cb'] ) || is_string( $args['fallback_cb'] ) )
 			&&
-			is_string( $args['walker'] )
+			( empty( $args['walker'] ) || is_string( $args['walker'] ) )
 		);
 		$args['can_partial_refresh'] = $can_partial_refresh;
 
 		if ( ! $can_partial_refresh ) {
-			unset( $args['fallback_cb'] );
-			unset( $args['walker'] );
+			$args['fallback_cb'] = '';
+			$args['walker'] = '';
 		}
 
 		ksort( $args );

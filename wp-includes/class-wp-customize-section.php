@@ -269,9 +269,7 @@ class WP_Customize_Section {
 	final public function get_content() {
 		ob_start();
 		$this->maybe_render();
-		$template = trim( ob_get_contents() );
-		ob_end_clean();
-		return $template;
+		return trim( ob_get_clean() );
 	}
 
 	/**
@@ -403,11 +401,9 @@ class WP_Customize_Themes_Section extends WP_Customize_Section {
 			<h3 class="accordion-section-title">
 				<?php
 				if ( $this->manager->is_theme_active() ) {
-					/* translators: %s: theme name */
-					printf( __( '<span class="customize-action">Active theme</span> %s' ), $this->title );
+					echo '<span class="customize-action">' . __( 'Active theme' ) . '</span> ' . $this->title;
 				} else {
-					/* translators: %s: theme name */
-					printf( __( '<span class="customize-action">Previewing theme</span> %s' ), $this->title );
+					echo '<span class="customize-action">' . __( 'Previewing theme' ) . '</span> ' . $this->title;
 				}
 				?>
 
@@ -422,11 +418,9 @@ class WP_Customize_Themes_Section extends WP_Customize_Section {
 				<h3 class="accordion-section-title customize-section-title">
 					<?php
 					if ( $this->manager->is_theme_active() ) {
-						/* translators: %s: theme name */
-						printf( __( '<span class="customize-action">Active theme</span> %s' ), $this->title );
+						echo '<span class="customize-action">' . __( 'Active theme' ) . '</span> ' . $this->title;
 					} else {
-						/* translators: %s: theme name */
-						printf( __( '<span class="customize-action">Previewing theme</span> %s' ), $this->title );
+						echo '<span class="customize-action">' . __( 'Previewing theme' ) . '</span> ' . $this->title;
 					}
 					?>
 					<button type="button" class="button customize-theme"><?php _e( 'Customize' ); ?></button>
@@ -564,9 +558,8 @@ class WP_Customize_New_Menu_Section extends WP_Customize_Section {
 	protected function render() {
 		?>
 		<li id="accordion-section-<?php echo esc_attr( $this->id ); ?>" class="accordion-section-new-menu">
-			<button type="button" class="button-secondary add-new-menu-item add-menu-toggle">
+			<button type="button" class="button-secondary add-new-menu-item add-menu-toggle" aria-expanded="false">
 				<?php echo esc_html( $this->title ); ?>
-				<span class="screen-reader-text"><?php _e( 'Press return or enter to open' ); ?></span>
 			</button>
 			<ul class="new-menu-section-content"></ul>
 		</li>
