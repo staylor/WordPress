@@ -1567,10 +1567,12 @@ function wp_ajax_inline_save() {
 		$data['parent_id'] = $data['post_parent'];
 
 	// Status.
-	if ( isset($data['keep_private']) && 'private' == $data['keep_private'] )
+	if ( isset( $data['keep_private'] ) && 'private' == $data['keep_private'] ) {
+		$data['visibility']  = 'private';
 		$data['post_status'] = 'private';
-	else
+	} else {
 		$data['post_status'] = $data['_status'];
+	}
 
 	if ( empty($data['comment_status']) )
 		$data['comment_status'] = 'closed';
@@ -2569,26 +2571,35 @@ function wp_ajax_send_link_to_editor() {
  * @since 3.6.0
  */
 function wp_ajax_heartbeat() {
-	if ( empty( $_POST['_nonce'] ) )
+	if ( empty( $_POST['_nonce'] ) ) {
 		wp_send_json_error();
-
-	$response = array();
-
-	if ( false === wp_verify_nonce( $_POST['_nonce'], 'heartbeat-nonce' ) ) {
-		// User is logged in but nonces have expired.
-		$response['nonces_expired'] = true;
-		wp_send_json($response);
 	}
 
+	$response = $data = array();
+	$nonce_state = wp_verify_nonce( $_POST['_nonce'], 'heartbeat-nonce' );
+
 	// screen_id is the same as $current_screen->id and the JS global 'pagenow'.
-	if ( ! empty($_POST['screen_id']) )
+	if ( ! empty( $_POST['screen_id'] ) ) {
 		$screen_id = sanitize_key($_POST['screen_id']);
-	else
+	} else {
 		$screen_id = 'front';
+	}
 
-	if ( ! empty($_POST['data']) ) {
+	if ( ! empty( $_POST['data'] ) ) {
 		$data = wp_unslash( (array) $_POST['data'] );
+	}
 
+	if ( 1 !== $nonce_state ) {
+		$response = apply_filters( 'wp_refresh_nonces', $response, $data, $screen_id );
+
+		if ( false === $nonce_state ) {
+			// User is logged in but nonces have expired.
+			$response['nonces_expired'] = true;
+			wp_send_json( $response );
+		}
+	}
+
+	if ( ! empty( $data ) ) {
 		/**
 		 * Filter the Heartbeat response received.
 		 *
@@ -2626,7 +2637,7 @@ function wp_ajax_heartbeat() {
 	// Send the current time according to the server
 	$response['server_time'] = time();
 
-	wp_send_json($response);
+	wp_send_json( $response );
 }
 
 /**
@@ -2961,7 +2972,7 @@ function wp_ajax_update_plugin() {
 	}
 
 	if ( ! current_user_can( 'update_plugins' ) ) {
-		$status['error'] = __( 'You do not have sufficient permissions to update plugins on this site.' );
+		$status['error'] = __( 'You do not have sufficient permissions to update plugins for this site.' );
  		wp_send_json_error( $status );
 	}
 
@@ -3077,6 +3088,17 @@ function wp_ajax_crop_image() {
 		case 'site-icon':
 			require_once ABSPATH . '/wp-admin/includes/class-wp-site-icon.php';
 			global $wp_site_icon;
+
+			// Skip creating a new attachment if the attachment is a Site Icon.
+			if ( get_post_meta( $attachment_id, '_wp_attachment_context', true ) == $context ) {
+
+				// Delete the temporary cropped file, we don't need it.
+				wp_delete_file( $cropped );
+
+				// Additional sizes in wp_prepare_attachment_for_js().
+				add_filter( 'image_size_names_choose', array( $wp_site_icon, 'additional_sizes' ) );
+				break;
+			}
 
 			/** This filter is documented in wp-admin/custom-header.php */
 			$cropped = apply_filters( 'wp_create_file_in_uploads', $cropped, $attachment_id ); // For replication.

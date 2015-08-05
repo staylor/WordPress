@@ -2937,10 +2937,11 @@ function wp_untrash_post_comments( $post = null ) {
 
 	foreach ( $group_by_status as $status => $comments ) {
 		// Sanity check. This shouldn't happen.
-		if ( 'post-trashed' == $status )
+		if ( 'post-trashed' == $status ) {
 			$status = '0';
-		$comments_in = implode( "', '", $comments );
-		$wpdb->query( "UPDATE $wpdb->comments SET comment_approved = '$status' WHERE comment_ID IN ('" . $comments_in . "')" );
+		}
+		$comments_in = implode( ', ', array_map( 'intval', $comments ) );
+		$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->comments SET comment_approved = %s WHERE comment_ID IN ($comments_in)", $status ) );
 	}
 
 	clean_comment_cache( array_keys($statuses) );
@@ -3013,7 +3014,8 @@ function wp_get_post_tags( $post_id = 0, $args = array() ) {
  *                         global $post. Default 0.
  * @param string $taxonomy Optional. The taxonomy for which to retrieve terms. Default 'post_tag'.
  * @param array  $args     Optional. {@link wp_get_object_terms()} arguments. Default empty array.
- * @return array List of post tags.
+ * @return array|WP_Error  List of post terms or empty array if no terms were found. WP_Error object
+ *                         if `$taxonomy` doesn't exist.
  */
 function wp_get_post_terms( $post_id = 0, $taxonomy = 'post_tag', $args = array() ) {
 	$post_id = (int) $post_id;
