@@ -22,6 +22,7 @@ filter:
         - wp-admin/includes/class-ftp-sockets.php
         - wp-admin/includes/class-ftp.php
         - wp-admin/includes/class-pclzip.php
+        - wp-admin/includes/class-wp-upgrader.php
         - wp-admin/includes/deprecated.php
     paths: {  }
 tools:
