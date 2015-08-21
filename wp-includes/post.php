@@ -312,7 +312,7 @@ function _wp_relative_upload_path( $path ) {
  *
  * @param mixed  $args   Optional. User defined arguments for replacing the defaults. Default empty.
  * @param string $output Optional. Constant for return type. Accepts OBJECT, ARRAY_A, ARRAY_N.
- *                       Default OBJECt.
+ *                       Default OBJECT.
  * @return array Array of children, where the type of each element is determined by $output parameter.
  *               Empty array on failure.
  */
@@ -1841,6 +1841,21 @@ function set_post_type( $post_id = 0, $post_type = 'post' ) {
 	clean_post_cache( $post_id );
 
 	return $return;
+}
+
+/**
+ * Determines whether a post type is considered "viewable".
+ *
+ * For built-in post types such as posts and pages, the 'public' value will be evaluated.
+ * For all others, the 'publicly_queryable' value will be used.
+ *
+ * @since 4.4.0
+ *
+ * @param object $post_type_object Post type object.
+ * @return bool Whether the post type should be considered viewable.
+ */
+function is_post_type_viewable( $post_type_object ) {
+	return $post_type_object->publicly_queryable || ( $post_type_object->_builtin && $post_type_object->public );
 }
 
 /**
