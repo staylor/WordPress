@@ -40,7 +40,6 @@ class WP_oEmbed {
 			'#https://((m|www)\.)?youtube\.com/playlist.*#i'      => array( 'http://www.youtube.com/oembed?scheme=https',         true  ),
 			'#http://youtu\.be/.*#i'                              => array( 'http://www.youtube.com/oembed',                      true  ),
 			'#https://youtu\.be/.*#i'                             => array( 'http://www.youtube.com/oembed?scheme=https',         true  ),
-			'http://blip.tv/*'                                    => array( 'http://blip.tv/oembed/',                             false ),
 			'#https?://(.+\.)?vimeo\.com/.*#i'                    => array( 'http://vimeo.com/api/oembed.{format}',               true  ),
 			'#https?://(www\.)?dailymotion\.com/.*#i'             => array( 'http://www.dailymotion.com/services/oembed',         true  ),
 			'http://dai.ly/*'                                     => array( 'http://www.dailymotion.com/services/oembed',         false ),
@@ -98,10 +97,8 @@ class WP_oEmbed {
 		 *
 		 * Supported providers:
 		 *
-		 * | ------------ | -------------------- | ----- | --------- |
 		 * |   Provider   |        Flavor        |  SSL  |   Since   |
 		 * | ------------ | -------------------- | ----- | --------- |
-		 * | Blip         | blip.tv              |   !   | 2.9.0     |
 		 * | Dailymotion  | dailymotion.com      |  Yes  | 2.9.0     |
 		 * | Flickr       | flickr.com           |  Yes  | 2.9.0     |
 		 * | Hulu         | hulu.com             |  Yes  | 2.9.0     |
@@ -147,11 +144,9 @@ class WP_oEmbed {
 		 * | Tumblr       | tumblr.com           |  Yes  | 4.2.0     |
 		 * | Kickstarter  | kickstarter.com      |  Yes  | 4.2.0     |
 		 * | Kickstarter  | kck.st               |  Yes  | 4.2.0     |
-		 * | ------------ | -------------------- | ----- | --------- |
 		 *
 		 * No longer supported providers:
 		 *
-		 * | ------------ | -------------------- | ----- | --------- | --------- |
 		 * |   Provider   |        Flavor        |  SSL  |   Since   |  Removed  |
 		 * | ------------ | -------------------- | ----- | --------- | --------- |
 		 * | Qik          | qik.com              |  Yes  | 2.9.0     | 3.9.0     |
@@ -160,6 +155,7 @@ class WP_oEmbed {
 		 * | ------------ | -------------------- | ----- | --------- | --------- |
 		 * | Revision3    | revision3.com        |   !   | 2.9.0     | 4.2.0     |
 		 * | ------------ | -------------------- | ----- | --------- | --------- |
+		 * | Blip         | blip.tv              |   !   | 2.9.0     | 4.4.0     |
 		 *
 		 * @see wp_oembed_add_provider()
 		 *
