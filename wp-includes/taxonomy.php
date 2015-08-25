@@ -1627,9 +1627,13 @@ function get_term_to_edit( $id, $taxonomy ) {
  *     @type int|string   $number            Maximum number of terms to return. Accepts ''|0 (all) or any
  *                                           positive number. Default ''|0 (all).
  *     @type int          $offset            The number by which to offset the terms query. Default empty.
- *     @type string       $fields            Term fields to query for. Accepts 'all' (returns an array of
- *                                           term objects), 'ids' or 'names' (returns an array of integers
- *                                           or strings, respectively. Default 'all'.
+ *     @type string       $fields            Term fields to query for. Accepts 'all' (returns an array of complete
+ *                                           term objects), 'ids' (returns an array of ids), 'id=>parent' (returns
+ *                                           an associative array with ids as keys, parent term IDs as values),
+ *                                           'names' (returns an array of term names), 'count' (returns the number
+ *                                           of matching terms), 'id=>name' (returns an associative array with ids
+ *                                           as keys, term names as values), or 'id=>slug' (returns an associative
+ *                                           array with ids as keys, term slugs as values). Default 'all'.
  *     @type string|array $name              Optional. Name or array of names to return term(s) for. Default empty.
  *     @type string|array $slug              Optional. Slug or array of slugs to return term(s) for. Default empty.
  *     @type bool         $hierarchical      Whether to include terms that have non-empty descendants (even
@@ -2551,6 +2555,9 @@ function wp_delete_term( $term, $taxonomy, $args = array() ) {
 		do_action( 'edited_term_taxonomies', $edit_tt_ids );
 	}
 
+	// Get the term before deleting it or its term relationships so we can pass to actions below.
+	$deleted_term = get_term( $term, $taxonomy );
+
 	$objects = $wpdb->get_col( $wpdb->prepare( "SELECT object_id FROM $wpdb->term_relationships WHERE term_taxonomy_id = %d", $tt_id ) );
 
 	foreach ( (array) $objects as $object ) {
@@ -2570,9 +2577,6 @@ function wp_delete_term( $term, $taxonomy, $args = array() ) {
 	$tax_object = get_taxonomy( $taxonomy );
 	foreach ( $tax_object->object_type as $object_type )
 		clean_object_term_cache( $objects, $object_type );
-
-	// Get the object before deletion so we can pass to actions below
-	$deleted_term = get_term( $term, $taxonomy );
 
 	/**
 	 * Fires immediately before a term taxonomy ID is deleted.
@@ -4437,15 +4441,15 @@ function _wp_batch_split_terms() {
 }
 
 /**
- * In order to avoid the wp_batch_split_terms() job being accidentally removed,
+ * In order to avoid the _wp_batch_split_terms() job being accidentally removed,
  * check that it's still scheduled while we haven't finished splitting terms.
  *
  * @ignore
  * @since 4.3.0
  */
 function _wp_check_for_scheduled_split_terms() {
-	if ( ! get_option( 'finished_splitting_shared_terms' ) && ! wp_next_scheduled( 'wp_batch_split_terms' ) ) {
-		wp_schedule_single_event( time() + MINUTE_IN_SECONDS, 'wp_batch_split_terms' );
+	if ( ! get_option( 'finished_splitting_shared_terms' ) && ! wp_next_scheduled( 'wp_split_shared_term_batch' ) ) {
+		wp_schedule_single_event( time() + MINUTE_IN_SECONDS, 'wp_split_shared_term_batch' );
 	}
 }
 

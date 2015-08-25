@@ -261,7 +261,7 @@ function wp_validate_logged_in_cookie( $user_id ) {
  * @global wpdb $wpdb WordPress database object for queries.
  *
  * @param int          $userid      User ID.
- * @param array|string $post_type   Optional. Post type(s) to count the number of posts for. Default 'post'.
+ * @param array|string $post_type   Optional. Single post type or array of post types to count the number of posts for. Default 'post'.
  * @param bool         $public_only Optional. Whether to only return counts for public posts. Default false.
  * @return int Number of posts the user has written in this post type.
  */
@@ -277,14 +277,14 @@ function count_user_posts( $userid, $post_type = 'post', $public_only = false ) 
 	 *
 	 * @since 2.7.0
 	 * @since 4.1.0 Added `$post_type` argument.
-	 * @since 4.3.0 Added `$public_only` argument.
+	 * @since 4.3.1 Added `$public_only` argument.
 	 *
 	 * @param int          $count       The user's post count.
 	 * @param int          $userid      User ID.
-	 * @param string|array $post_types  Post types to count the number of posts for.
+	 * @param string|array $post_type   Single post type or array of post types to count the number of posts for.
 	 * @param bool         $public_only Whether to limit counted posts to public posts.
 	 */
-	return apply_filters( 'get_usernumposts', $count, $userid, $post_type );
+	return apply_filters( 'get_usernumposts', $count, $userid, $post_type, $public_only );
 }
 
 /**
@@ -2063,6 +2063,32 @@ function wp_insert_user( $userdata ) {
 
 	$user = new WP_User( $user_id );
 
+	/**
+ 	 * Filter a user's meta values and keys before the user is created or updated.
+ 	 *
+ 	 * Does not include contact methods. These are added using `wp_get_user_contact_methods( $user )`.
+ 	 *
+ 	 * @since 4.4.0
+ 	 *
+ 	 * @param array $meta {
+ 	 *     Default meta values and keys for the user.
+ 	 *
+ 	 *     @type string   $nickname             The user's nickname. Default is the the user's username.
+	 *     @type string   $first_name           The user's first name.
+	 *     @type string   $last_name            The user's last name.
+	 *     @type string   $description          The user's description.
+	 *     @type bool     $rich_editing         Whether to enable the rich-editor for the user. False if not empty.
+	 *     @type bool     $comment_shortcuts    Whether to enable keyboard shortcuts for the user. Default false.
+	 *     @type string   $admin_color          The color scheme for a user's admin screen. Default 'fresh'.
+	 *     @type int|bool $use_ssl              Whether to force SSL on the user's admin area. 0|false if SSL is
+	 *                                          not forced.
+	 *     @type bool     $show_admin_bar_front Whether to show the admin bar on the front end for the user.
+	 *                                          Default true.
+ 	 * }
+ 	 * @param WP_User $user User object.
+ 	 */
+	$meta = apply_filters( 'insert_user_meta', $meta, $user );
+
 	// Update user meta.
 	foreach ( $meta as $key => $value ) {
 		update_user_meta( $user_id, $key, $value );
@@ -2339,7 +2365,8 @@ All at ###SITENAME###
  * @param string $username The user's username.
  * @param string $password The user's password.
  * @param string $email    Optional. The user's email. Default empty.
- * @return int|WP_Error The new user's ID.
+ * @return int|WP_Error The newly created user's ID or a WP_Error object if the user could not
+ *                      be created.
  */
 function wp_create_user($username, $password, $email = '') {
 	$user_login = wp_slash( $username );

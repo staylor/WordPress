@@ -1425,6 +1425,7 @@ class WP_Query {
 			, 'preview'
 			, 's'
 			, 'sentence'
+			, 'title'
 			, 'fields'
 			, 'menu_order'
 		);
@@ -1451,7 +1452,7 @@ class WP_Query {
 	 * @since 1.5.0
 	 * @since 4.2.0 Introduced the ability to order by specific clauses of a `$meta_query`, by passing the clause's
 	 *              array key to `$orderby`.
-	 * @since 4.4.0 Introduced the `$post_name__in` parameter.
+	 * @since 4.4.0 Introduced `$post_name__in` and `$title` parameters.
 	 * @access public
 	 *
 	 * @param string|array $query {
@@ -1544,6 +1545,7 @@ class WP_Query {
 	 *                                                 true. Note: a string of comma-separated IDs will NOT work.
 	 *     @type array        $tax_query               An associative array of WP_Tax_Query arguments.
 	 *                                                 {@see WP_Tax_Query->queries}
+	 *     @type string       $title                   Post title.
 	 *     @type bool         $update_post_meta_cache  Whether to update the post meta cache. Default true.
 	 *     @type bool         $update_post_term_cache  Whether to update the post term cache. Default true.
 	 *     @type int          $w                       The week number of the year. Default empty. Accepts numbers 0-53.
@@ -1577,6 +1579,7 @@ class WP_Query {
 		$qv['author'] = preg_replace( '|[^0-9,-]|', '', $qv['author'] ); // comma separated list of positive or negative integers
 		$qv['pagename'] = trim( $qv['pagename'] );
 		$qv['name'] = trim( $qv['name'] );
+		$qv['title'] = trim( $qv['title'] );
 		if ( '' !== $qv['hour'] ) $qv['hour'] = absint($qv['hour']);
 		if ( '' !== $qv['minute'] ) $qv['minute'] = absint($qv['minute']);
 		if ( '' !== $qv['second'] ) $qv['second'] = absint($qv['second']);
@@ -1888,6 +1891,11 @@ class WP_Query {
 			}
 		}
 
+		// If querystring 'cat' is an array, implode it.
+		if ( is_array( $q['cat'] ) ) {
+			$q['cat'] = implode( ',', $q['cat'] );
+		}
+
 		// Category stuff
 		if ( ! empty( $q['cat'] ) && ! $this->is_singular ) {
 			$cat_in = $cat_not_in = array();
@@ -1961,6 +1969,11 @@ class WP_Query {
 				'operator' => 'AND',
 				'include_children' => false
 			);
+		}
+
+		// If querystring 'tag' is array, implode it.
+		if ( is_array( $q['tag'] ) ) {
+			$q['tag'] = implode( ',', $q['tag'] );
 		}
 
 		// Tag stuff
@@ -2603,6 +2616,10 @@ class WP_Query {
 				break;
 			} //end foreach
 			unset($ptype_obj);
+		}
+
+		if ( '' !== $q['title'] ) {
+			$where .= $wpdb->prepare( " AND $wpdb->posts.post_title = %s", stripslashes( $q['title'] ) );
 		}
 
 		// Parameters related to 'post_name'.
