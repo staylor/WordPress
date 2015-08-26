@@ -502,7 +502,7 @@ function wp_mail( $to, $subject, $message, $headers = '', $attachments = array()
 
 	// Set custom headers
 	if ( !empty( $headers ) ) {
-		foreach( (array) $headers as $name => $content ) {
+		foreach ( (array) $headers as $name => $content ) {
 			$phpmailer->AddCustomHeader( sprintf( '%1$s: %2$s', $name, $content ) );
 		}
 
@@ -1139,13 +1139,6 @@ function check_ajax_referer( $action = -1, $query_arg = false, $die = true ) {
 
 	$result = wp_verify_nonce( $nonce, $action );
 
-	if ( $die && false === $result ) {
-		if ( defined( 'DOING_AJAX' ) && DOING_AJAX )
-			wp_die( -1 );
-		else
-			die( '-1' );
-	}
-
 	/**
 	 * Fires once the AJAX request has been validated or not.
 	 *
@@ -1156,6 +1149,14 @@ function check_ajax_referer( $action = -1, $query_arg = false, $die = true ) {
 	 *                          0-12 hours ago, 2 if the nonce is valid and generated between 12-24 hours ago.
 	 */
 	do_action( 'check_ajax_referer', $action, $result );
+
+	if ( $die && false === $result ) {
+		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+			wp_die( -1 );
+		} else {
+			die( '-1' );
+		}
+	}
 
 	return $result;
 }
@@ -1810,6 +1811,18 @@ function wp_verify_nonce( $nonce, $action = -1 ) {
 	if ( hash_equals( $expected, $nonce ) ) {
 		return 2;
 	}
+
+	/**
+	 * Fires when nonce verification fails.
+	 *
+	 * @since 4.4.0
+	 *
+	 * @param string     $nonce  The invalid nonce.
+	 * @param string|int $action The nonce action.
+	 * @param WP_User    $user   The current user object.
+	 * @param string     $token  The user's session token.
+	 */ 
+	do_action( 'wp_verify_nonce_failed', $nonce, $action, $user, $token );
 
 	// Invalid nonce
 	return false;
