@@ -42,8 +42,9 @@ class WP_Comments_List_Table extends WP_List_Table {
 
 		$post_id = isset( $_REQUEST['p'] ) ? absint( $_REQUEST['p'] ) : 0;
 
-		if ( get_option('show_avatars') )
-			add_filter( 'comment_author', 'floated_admin_avatar' );
+		if ( get_option( 'show_avatars' ) ) {
+			add_filter( 'comment_author', array( $this, 'floated_admin_avatar' ), 10, 2 );
+		}
 
 		parent::__construct( array(
 			'plural' => 'comments',
@@ -51,6 +52,12 @@ class WP_Comments_List_Table extends WP_List_Table {
 			'ajax' => true,
 			'screen' => isset( $args['screen'] ) ? $args['screen'] : null,
 		) );
+	}
+
+	public function floated_admin_avatar( $name, $comment_ID ) {
+		$comment = get_comment( $comment_ID );
+		$avatar = get_avatar( $comment, 32, 'mystery' );
+		return "$avatar $name";
 	}
 
 	/**
@@ -428,16 +435,13 @@ class WP_Comments_List_Table extends WP_List_Table {
 	}
 
 	/**
-	 *
 	 * @global WP_Post $post
-	 * @global object  $comment
 	 *
-	 * @param object $a_comment
+	 * @param object $comment
 	 */
-	public function single_row( $a_comment ) {
-		global $post, $comment;
+	public function single_row( $comment ) {
+		global $post;
 
-		$comment = $a_comment;
 		$the_comment_class = wp_get_comment_status( $comment->comment_ID );
 		if ( ! $the_comment_class ) {
 			$the_comment_class = '';
@@ -594,8 +598,8 @@ class WP_Comments_List_Table extends WP_List_Table {
 		/* translators: 2: comment date, 3: comment time */
 		printf( __( 'Submitted on <a href="%1$s">%2$s at %3$s</a>' ), $comment_url,
 			/* translators: comment date format. See http://php.net/date */
-			get_comment_date( __( 'Y/m/d' ) ),
-			get_comment_date( get_option( 'time_format' ) )
+			get_comment_date( __( 'Y/m/d' ), $comment->comment_ID ),
+			get_comment_date( get_option( 'time_format' ), $comment->comment_ID )
 		);
 
 		if ( $comment->comment_parent ) {
@@ -606,7 +610,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 		}
 
 		echo '</div>';
-		comment_text();
+		comment_text( $comment->comment_ID );
 		if ( $this->user_can ) { ?>
 		<div id="inline-<?php echo $comment->comment_ID; ?>" class="hidden">
 		<textarea class="comment" rows="1" cols="1"><?php
@@ -631,24 +635,33 @@ class WP_Comments_List_Table extends WP_List_Table {
 	public function column_author( $comment ) {
 		global $comment_status;
 
-		$author_url = get_comment_author_url();
-		if ( 'http://' == $author_url )
+		$author_url = get_comment_author_url( $comment->comment_ID );
+		if ( 'http://' == $author_url ) {
 			$author_url = '';
-		$author_url_display = preg_replace( '|http://(www\.)?|i', '', $author_url );
-		if ( strlen( $author_url_display ) > 50 )
-			$author_url_display = substr( $author_url_display, 0, 49 ) . '&hellip;';
+		}
 
-		echo "<strong>"; comment_author(); echo '</strong><br />';
-		if ( !empty( $author_url ) )
+		$author_url_display = preg_replace( '|http://(www\.)?|i', '', $author_url );
+		if ( strlen( $author_url_display ) > 50 ) {
+			$author_url_display = wp_html_excerpt( $author_url_display, 49, '&hellip;' );
+		}
+
+
+		echo "<strong>"; comment_author( $comment->comment_ID ); echo '</strong><br />';
+		if ( !empty( $author_url ) ) {
 			echo "<a title='$author_url' href='$author_url'>$author_url_display</a><br />";
+		}
 
 		if ( $this->user_can ) {
-			if ( !empty( $comment->comment_author_email ) ) {
-				comment_author_email_link();
-				echo '<br />';
+			if ( ! empty( $comment->comment_author_email ) ) {
+				/* This filter is documented in wp-includes/comment-template.php */
+				$email = apply_filters( 'comment_email', $comment->comment_author_email, $comment );
+
+				if ( ! empty( $email ) && '@' !== $email ) {
+					printf( '<a href=\'mailto:%1$s\'>%1$s</a><br />', $email );
+				}
 			}
 
-			$author_ip = get_comment_author_IP();
+			$author_ip = get_comment_author_IP( $comment->comment_ID );
 			if ( $author_ip ) {
 				$author_ip_url = add_query_arg( array( 's' => $author_ip, 'mode' => 'detail' ), 'edit-comments.php' );
 				if ( 'spam' == $comment_status ) {
@@ -663,8 +676,8 @@ class WP_Comments_List_Table extends WP_List_Table {
 	 *
 	 * @return string
 	 */
-	public function column_date() {
-		return get_comment_date( __( 'Y/m/d \a\t g:i a' ) );
+	public function column_date( $comment ) {
+		return get_comment_date( __( 'Y/m/d \a\t g:i a' ), $comment->comment_ID );
 	}
 
 	/**

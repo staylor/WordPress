@@ -40,6 +40,7 @@ function get_option( $option, $default = false ) {
 	 * the option value, returning the passed value instead.
 	 *
 	 * @since 1.5.0
+	 * @since 4.4.0 The `$option` parameter was added.
 	 *
 	 * @param bool|mixed $pre_option Value to return instead of the option value.
 	 *                               Default false to skip it.
@@ -62,6 +63,7 @@ function get_option( $option, $default = false ) {
 			 * The dynamic portion of the hook name, `$option`, refers to the option name.
 			 *
 			 * @since 3.4.0
+			 * @since 4.4.0 The `$option` parameter was added.
 			 *
 			 * @param mixed  $default The default value to return if the option does not exist
 			 *                        in the database.
@@ -122,6 +124,7 @@ function get_option( $option, $default = false ) {
 	 *
 	 * @since 1.5.0 As 'option_' . $setting
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added.
 	 *
 	 * @param mixed  $value  Value of the option. If stored serialized, it will be
 	 *                       unserialized prior to being returned.
@@ -265,6 +268,7 @@ function update_option( $option, $value, $autoload = null ) {
 	 * The dynamic portion of the hook name, `$option`, refers to the option name.
 	 *
 	 * @since 2.6.0
+	 * @since 4.4.0 The `$option` parameter was added.
 	 *
 	 * @param mixed  $value     The new, unserialized option value.
 	 * @param mixed  $old_value The old option value.
@@ -344,6 +348,7 @@ function update_option( $option, $value, $autoload = null ) {
 	 * The dynamic portion of the hook name, `$option`, refers to the option name.
 	 *
 	 * @since 2.0.1
+	 * @since 4.4.0 The `$option` parameter was added.
 	 *
 	 * @param mixed  $old_value The old option value.
 	 * @param mixed  $value     The new option value.
@@ -609,6 +614,7 @@ function get_transient( $transient ) {
 	 * of the transient, returning the passed value instead.
 	 *
 	 * @since 2.8.0
+	 * @since 4.4.0 The `$transient` parameter was added
 	 *
 	 * @param mixed  $pre_transient The default value to return if the transient does not exist.
 	 *                              Any value other than false will short-circuit the retrieval
@@ -647,6 +653,7 @@ function get_transient( $transient ) {
 	 * The dynamic portion of the hook name, `$transient`, refers to the transient name.
 	 *
 	 * @since 2.8.0
+	 * @since 4.4.0 The `$transient` parameter was added
 	 *
 	 * @param mixed  $value     Value of transient.
 	 * @param string $transient Transient name.
@@ -679,7 +686,8 @@ function set_transient( $transient, $value, $expiration = 0 ) {
 	 * The dynamic portion of the hook name, `$transient`, refers to the transient name.
 	 *
 	 * @since 3.0.0
-	 * @since 4.2.0 Added `$expiration` parameter.
+	 * @since 4.2.0 The `$expiration` parameter was added.
+	 * @since 4.4.0 The `$transient` parameter was added.
 	 *
 	 * @param mixed  $value      New value of transient.
 	 * @param int    $expiration Time until expiration in seconds.
@@ -892,7 +900,7 @@ function get_all_user_settings() {
 	$user_settings = array();
 
 	if ( isset( $_COOKIE['wp-settings-' . $user_id] ) ) {
-		$cookie = preg_replace( '/[^A-Za-z0-9=&_]/', '', $_COOKIE['wp-settings-' . $user_id] );
+		$cookie = preg_replace( '/[^A-Za-z0-9=&_-]/', '', $_COOKIE['wp-settings-' . $user_id] );
 
 		if ( strpos( $cookie, '=' ) ) { // '=' cannot be 1st char
 			parse_str( $cookie, $user_settings );
@@ -932,8 +940,8 @@ function wp_set_all_user_settings( $user_settings ) {
 
 	$settings = '';
 	foreach ( $user_settings as $name => $value ) {
-		$_name = preg_replace( '/[^A-Za-z0-9_]+/', '', $name );
-		$_value = preg_replace( '/[^A-Za-z0-9_]+/', '', $value );
+		$_name = preg_replace( '/[^A-Za-z0-9_-]+/', '', $name );
+		$_value = preg_replace( '/[^A-Za-z0-9_-]+/', '', $value );
 
 		if ( ! empty( $_name ) ) {
 			$settings .= $_name . '=' . $_value . '&';
@@ -990,6 +998,7 @@ function get_site_option( $option, $default = false, $use_cache = true ) {
 	 *
 	 * @since 2.9.0 As 'pre_site_option_' . $key
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added
 	 *
 	 * @param mixed  $pre_option The default value to return if the option does not exist.
 	 * @param string $option     Option name.
@@ -1011,6 +1020,7 @@ function get_site_option( $option, $default = false, $use_cache = true ) {
 		 * The dynamic portion of the hook name, `$option`, refers to the option name.
 		 *
 		 * @since 3.4.0
+		 * @since 4.4.0 The `$option` parameter was added.
 		 *
 		 * @param mixed  $default The value to return if the site option does not exist
 		 *                        in the database.
@@ -1057,6 +1067,7 @@ function get_site_option( $option, $default = false, $use_cache = true ) {
 	 *
 	 * @since 2.9.0 As 'site_option_' . $key
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added
 	 *
 	 * @param mixed  $value  Value of site option.
 	 * @param string $option Option name.
@@ -1091,6 +1102,7 @@ function add_site_option( $option, $value ) {
 	 *
 	 * @since 2.9.0 As 'pre_add_site_option_' . $key
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added
 	 *
 	 * @param mixed  $value  Value of site option.
 	 * @param string $option Option name.
@@ -1181,6 +1193,7 @@ function delete_site_option( $option ) {
 	 * The dynamic portion of the hook name, `$option`, refers to the option name.
 	 *
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added
 	 *
 	 * @param string $option Option name.
 	 */
@@ -1253,6 +1266,7 @@ function update_site_option( $option, $value ) {
 	 *
 	 * @since 2.9.0 As 'pre_update_site_option_' . $key
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$option` parameter was added
 	 *
 	 * @param mixed  $value     New value of site option.
 	 * @param mixed  $old_value Old value of site option.
@@ -1388,6 +1402,7 @@ function get_site_transient( $transient ) {
 	 * returning the passed value instead.
 	 *
 	 * @since 2.9.0
+	 * @since 4.4.0 The `$transient` parameter was added
 	 *
 	 * @param mixed  $pre_site_transient The default value to return if the site transient does not exist.
 	 *                                   Any value other than false will short-circuit the retrieval
@@ -1425,6 +1440,7 @@ function get_site_transient( $transient ) {
 	 * The dynamic portion of the hook name, `$transient`, refers to the transient name.
 	 *
 	 * @since 2.9.0
+	 * @since 4.4.0 The `$transient` parameter was added
 	 *
 	 * @param mixed  $value     Value of site transient.
 	 * @param string $transient Transient name.
@@ -1456,6 +1472,7 @@ function set_site_transient( $transient, $value, $expiration = 0 ) {
 	 * The dynamic portion of the hook name, `$transient`, refers to the transient name.
 	 *
 	 * @since 3.0.0
+	 * @since 4.4.0 The `$transient` parameter was added
 	 *
 	 * @param mixed  $value     Value of site transient.
 	 * @param string $transient Transient name.
@@ -1487,6 +1504,7 @@ function set_site_transient( $transient, $value, $expiration = 0 ) {
 		 * The dynamic portion of the hook name, `$transient`, refers to the transient name.
 		 *
 		 * @since 3.0.0
+		 * @since 4.4.0 The `$transient` parameter was added
 		 *
 		 * @param mixed  $value      Site transient value.
 		 * @param int    $expiration Time until expiration in seconds. Default 0.
