@@ -548,10 +548,10 @@ function wp_dashboard_recent_drafts( $drafts = false ) {
 }
 
 /**
- * @global object $comment
+ * @global WP_Comment $comment
  *
- * @param object $comment
- * @param bool   $show_date
+ * @param WP_Comment $comment
+ * @param bool       $show_date
  */
 function _wp_dashboard_recent_comments_row( &$comment, $show_date = true ) {
 	$GLOBALS['comment'] =& $comment;
@@ -603,10 +603,10 @@ function _wp_dashboard_recent_comments_row( &$comment, $show_date = true ) {
 		 *
 		 * @since 2.6.0
 		 *
-		 * @param array  $actions An array of comment actions. Default actions include:
-		 *                        'Approve', 'Unapprove', 'Edit', 'Reply', 'Spam',
-		 *                        'Delete', and 'Trash'.
-		 * @param object $comment The comment object.
+		 * @param array      $actions An array of comment actions. Default actions include:
+		 *                            'Approve', 'Unapprove', 'Edit', 'Reply', 'Spam',
+		 *                            'Delete', and 'Trash'.
+		 * @param WP_Comment $comment The comment object.
 		 */
 		$actions = apply_filters( 'comment_row_actions', array_filter($actions), $comment );
 
@@ -1309,8 +1309,8 @@ function wp_check_browser_version() {
 		/**
 		 * Response should be an array with:
 		 *  'name' - string - A user friendly browser name
-		 *  'version' - string - The most recent version of the browser
-		 *  'current_version' - string - The version of the browser the user is using
+		 *  'version' - string - The version of the browser the user is using
+		 *  'current_version' - string - The most recent version of the browser
 		 *  'upgrade' - boolean - Whether the browser needs an upgrade
 		 *  'insecure' - boolean - Whether the browser is deemed insecure
 		 *  'upgrade_url' - string - The url to visit to upgrade

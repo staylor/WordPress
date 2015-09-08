@@ -1,14 +1,21 @@
 <?php
 /**
- * WordPress Comment Query class.
+ * Comments API: WP_Comment_Query class
  *
- * See WP_Comment_Query::__construct() for accepted arguments.
- *
- * @since 3.1.0
  * @package WordPress
  * @subpackage Comment
+ * @since 4.4.0
+ */
+
+/**
+ * Core class used for querying comments.
+ *
+ * @since 3.1.0
+ *
+ * @see WP_Comment_Query::__construct() for accepted arguments.
  */
 class WP_Comment_Query {
+
 	/**
 	 * SQL for database query.
 	 *
@@ -665,7 +672,10 @@ class WP_Comment_Query {
 		 * @param array            $results  An array of comments.
 		 * @param WP_Comment_Query &$this    Current instance of WP_Comment_Query, passed by reference.
 		 */
-		$comments = apply_filters_ref_array( 'the_comments', array( $results, &$this ) );
+		$_comments = apply_filters_ref_array( 'the_comments', array( $results, &$this ) );
+
+		// Convert to WP_Comment instances
+		$comments = array_map( 'get_comment', $_comments );
 
 		wp_cache_add( $cache_key, $comments, 'comment' );
 		if ( '*' === $fields ) {

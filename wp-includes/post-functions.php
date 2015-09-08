@@ -2775,6 +2775,7 @@ function wp_get_recent_posts( $args = array(), $output = ARRAY_A ) {
  *
  * @since 1.0.0
  * @since 4.2.0 Support was added for encoding emoji in the post title, content, and excerpt.
+ * @since 4.4.0 A 'meta_input' array can now be passed to `$postarr` to add post meta data.
  *
  * @see sanitize_post()
  * @global wpdb $wpdb WordPress database abstraction object.
@@ -2813,6 +2814,8 @@ function wp_get_recent_posts( $args = array(), $output = ARRAY_A ) {
  *     @type int    $menu_order            The order the post should be displayed in. Default 0.
  *     @type string $post_mime_type        The mime type of the post. Default empty.
  *     @type string $guid                  Global Unique ID for referencing the post. Default empty.
+ *     @type array  $tax_input             Array of taxonomy terms keyed by their taxonomy name. Default empty.
+ *     @type array  $meta_input            Array of post meta values keyed by their post meta key. Default empty.
  * }
  * @param bool  $wp_error Optional. Whether to allow return of WP_Error on failure. Default false.
  * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
@@ -3169,6 +3172,12 @@ function wp_insert_post( $postarr, $wp_error = false ) {
 			if ( current_user_can( $taxonomy_obj->cap->assign_terms ) ) {
 				wp_set_post_terms( $post_ID, $tags, $taxonomy );
 			}
+		}
+	}
+
+	if ( ! empty( $postarr['meta_input'] ) ) {
+		foreach ( $postarr['meta_input'] as $field => $value ) {
+			update_post_meta( $post_ID, $field, $value );
 		}
 	}
 
@@ -3599,10 +3608,10 @@ function _truncate_post_slug( $slug, $length = 200 ) {
  *
  * @since 2.3.0
  *
- * @param int    $post_id Optional. The Post ID. Does not default to the ID of the global $post.
- *                        Default 0.
- * @param string $tags    Optional. The tags to set for the post, separated by commas. Default empty.
- * @return array|false|WP_Error Will return false if $post_id is not an integer or is 0.
+ * @param int          $post_id Optional. The Post ID. Does not default to the ID of the global $post.
+ * @param string|array $tags    Optional. An array of tags to set for the post, or a string of tags
+ *                              separated by commas. Default empty.
+ * @return array|false|WP_Error Array of affected term IDs. WP_Error or false on failure.
  */
 function wp_add_post_tags( $post_id = 0, $tags = '' ) {
 	return wp_set_post_tags($post_id, $tags, true);
@@ -3615,11 +3624,11 @@ function wp_add_post_tags( $post_id = 0, $tags = '' ) {
  *
  * @see wp_set_object_terms()
  *
- * @param int    $post_id Optional. The Post ID. Does not default to the ID of the global $post.
- * @param string $tags    Optional. The tags to set for the post, separated by commas.
- *                        Default empty.
- * @param bool   $append  Optional. If true, don't delete existing tags, just add on. If false,
- *                        replace the tags with the new tags. Default false.
+ * @param int          $post_id Optional. The Post ID. Does not default to the ID of the global $post.
+ * @param string|array $tags    Optional. An array of tags to set for the post, or a string of tags
+ *                              separated by commas. Default empty.
+ * @param bool         $append  Optional. If true, don't delete existing tags, just add on. If false,
+ *                              replace the tags with the new tags. Default false.
  * @return array|false|WP_Error Array of affected term IDs. WP_Error or false on failure.
  */
 function wp_set_post_tags( $post_id = 0, $tags = '', $append = false ) {
@@ -3633,11 +3642,12 @@ function wp_set_post_tags( $post_id = 0, $tags = '', $append = false ) {
  *
  * @see wp_set_object_terms()
  *
- * @param int    $post_id  Optional. The Post ID. Does not default to the ID of the global $post.
- * @param string $tags     Optional. The tags to set for the post, separated by commas. Default empty.
- * @param string $taxonomy Optional. Taxonomy name. Default 'post_tag'.
- * @param bool   $append   Optional. If true, don't delete existing tags, just add on. If false,
- *                         replace the tags with the new tags. Default false.
+ * @param int          $post_id  Optional. The Post ID. Does not default to the ID of the global $post.
+ * @param string|array $tags     Optional. An array of terms to set for the post, or a string of terms
+ *                               separated by commas. Default empty.
+ * @param string       $taxonomy Optional. Taxonomy name. Default 'post_tag'.
+ * @param bool         $append   Optional. If true, don't delete existing terms, just add on. If false,
+ *                               replace the terms with the new terms. Default false.
  * @return array|false|WP_Error Array of affected term IDs. WP_Error or false on failure.
  */
 function wp_set_post_terms( $post_id = 0, $tags = '', $taxonomy = 'post_tag', $append = false ) {

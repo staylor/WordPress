@@ -10,10 +10,19 @@
 require_once( dirname( __FILE__ ) . '/admin.php' );
 
 if ( is_multisite() ) {
-	if ( ! current_user_can( 'create_users' ) && ! current_user_can( 'promote_users' ) )
-		wp_die( __( 'Cheatin&#8217; uh?' ), 403 );
+	if ( ! current_user_can( 'create_users' ) && ! current_user_can( 'promote_users' ) ) {
+		wp_die(
+			'<h1>' . __( 'Cheatin&#8217; uh?' ) . '</h1>' .
+			'<p>' . __( 'You do not have sufficient permissions to add users to this network.' ) . '</p>',
+			403
+		);
+	}
 } elseif ( ! current_user_can( 'create_users' ) ) {
-	wp_die( __( 'Cheatin&#8217; uh?' ), 403 );
+	wp_die(
+		'<h1>' . __( 'Cheatin&#8217; uh?' ) . '</h1>' .
+		'<p>' . __( 'You are not allowed to create users.' ) . '</p>',
+		403
+	);
 }
 
 if ( is_multisite() ) {
@@ -59,8 +68,13 @@ if ( isset($_REQUEST['action']) && 'adduser' == $_REQUEST['action'] ) {
 		die();
 	}
 
-	if ( ! current_user_can('promote_user', $user_details->ID) )
-		wp_die( __( 'Cheatin&#8217; uh?' ), 403 );
+	if ( ! current_user_can( 'promote_user', $user_details->ID ) ) {
+		wp_die(
+			'<h1>' . __( 'Cheatin&#8217; uh?' ) . '</h1>' .
+			'<p>' . __( 'You do not have sufficient permissions to add users to this network.' ) . '</p>',
+			403
+		);
+	}
 
 	// Adding an existing user to this blog
 	$new_user_email = $user_details->user_email;
@@ -108,8 +122,13 @@ Please click the following link to confirm the invite:
 } elseif ( isset($_REQUEST['action']) && 'createuser' == $_REQUEST['action'] ) {
 	check_admin_referer( 'create-user', '_wpnonce_create-user' );
 
-	if ( ! current_user_can('create_users') )
-		wp_die( __( 'Cheatin&#8217; uh?' ), 403 );
+	if ( ! current_user_can( 'create_users' ) ) {
+		wp_die(
+			'<h1>' . __( 'Cheatin&#8217; uh?' ) . '</h1>' .
+			'<p>' . __( 'You are not allowed to create users.' ) . '</p>',
+			403
+		);
+	}
 
 	if ( ! is_multisite() ) {
 		$user_id = edit_user();
@@ -286,7 +305,7 @@ if ( ! empty( $messages ) ) {
 <?php
 if ( is_multisite() ) {
 	if ( $do_both )
-		echo '<h3 id="add-existing-user">' . __('Add Existing User') . '</h3>';
+		echo '<h2 id="add-existing-user">' . __( 'Add Existing User' ) . '</h2>';
 	if ( !is_super_admin() ) {
 		echo '<p>' . __( 'Enter the email address of an existing user on this network to invite them to this site. That person will be sent an email asking them to confirm the invite.' ) . '</p>';
 		$label = __('Email');
@@ -348,7 +367,7 @@ do_action( 'user_new_form', 'add-existing-user' );
 
 if ( current_user_can( 'create_users') ) {
 	if ( $do_both )
-		echo '<h3 id="create-new-user">' . __( 'Add New User' ) . '</h3>';
+		echo '<h2 id="create-new-user">' . __( 'Add New User' ) . '</h2>';
 ?>
 <p><?php _e('Create a brand new user and add them to this site.'); ?></p>
 <form method="post" name="createuser" id="createuser" class="validate" novalidate="novalidate"<?php
