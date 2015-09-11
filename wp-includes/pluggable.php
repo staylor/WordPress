@@ -1362,7 +1362,7 @@ function wp_notify_postauthor( $comment_id, $deprecated = null ) {
 	}
 
 	$comment = get_comment( $comment_id );
-	if ( empty( $comment ) )
+	if ( empty( $comment ) || empty( $comment->comment_post_ID ) )
 		return false;
 
 	$post    = get_post( $comment->comment_post_ID );
@@ -1472,7 +1472,7 @@ function wp_notify_postauthor( $comment_id, $deprecated = null ) {
 			break;
 	}
 	$notify_message .= get_permalink($comment->comment_post_ID) . "#comments\r\n\r\n";
-	$notify_message .= sprintf( __('Permalink: %s'), get_comment_link( $comment_id ) ) . "\r\n";
+	$notify_message .= sprintf( __('Permalink: %s'), get_comment_link( $comment ) ) . "\r\n";
 
 	if ( user_can( $post->post_author, 'edit_comment', $comment_id ) ) {
 		if ( EMPTY_TRASH_DAYS )
@@ -1821,7 +1821,7 @@ function wp_verify_nonce( $nonce, $action = -1 ) {
 	 * @param string|int $action The nonce action.
 	 * @param WP_User    $user   The current user object.
 	 * @param string     $token  The user's session token.
-	 */ 
+	 */
 	do_action( 'wp_verify_nonce_failed', $nonce, $action, $user, $token );
 
 	// Invalid nonce

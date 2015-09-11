@@ -69,7 +69,7 @@ if ( !defined('ABSPATH') )
 
 <div id="minor-publishing-actions">
 <div id="preview-action">
-<a class="preview button" href="<?php echo get_comment_link(); ?>" target="_blank"><?php _e('View Comment'); ?></a>
+<a class="preview button" href="<?php echo get_comment_link( $comment ); ?>" target="_blank"><?php _e('View Comment'); ?></a>
 </div>
 <div class="clear"></div>
 </div>
@@ -120,8 +120,8 @@ if ( current_user_can( 'edit_post', $post_id ) ) {
 if ( $comment->comment_parent ) :
 	$parent      = get_comment( $comment->comment_parent );
 	if ( $parent ) :
-		$parent_link = esc_url( get_comment_link( $comment->comment_parent ) );
-		$name        = get_comment_author( $parent->comment_ID );
+		$parent_link = esc_url( get_comment_link( $comment ) );
+		$name        = get_comment_author( $parent );
 	?>
 	<div class="misc-pub-section misc-pub-reply-to">
 		<?php printf(

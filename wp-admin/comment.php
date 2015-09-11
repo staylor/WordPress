@@ -180,8 +180,8 @@ if ( $comment->comment_approved != '0' ) { // if not unapproved
 
 		if ( $comment->comment_parent ) {
 			$parent      = get_comment( $comment->comment_parent );
-			$parent_link = esc_url( get_comment_link( $comment->comment_parent ) );
-			$name        = get_comment_author( $parent->comment_ID );
+			$parent_link = esc_url( get_comment_link( $parent ) );
+			$name        = get_comment_author( $parent );
 			printf( ' | ' . __( 'In reply to <a href="%1$s">%2$s</a>.' ), $parent_link, $name );
 		}
 	?>
@@ -193,10 +193,10 @@ if ( $comment->comment_approved != '0' ) { // if not unapproved
 	<?php
 		/* translators: 2: comment date, 3: comment time */
 		printf( __( '<a href="%1$s">%2$s at %3$s</a>' ),
-			esc_url( get_comment_link( $comment->comment_ID ) ),
+			esc_url( get_comment_link( $comment ) ),
 			/* translators: comment date format. See http://php.net/date */
-			get_comment_date( __( 'Y/m/d' ) ),
-			get_comment_date( get_option( 'time_format' ) )
+			get_comment_date( __( 'Y/m/d' ), $comment ),
+			get_comment_date( get_option( 'time_format' ), $comment )
 		);
 	?>
 	</td>
