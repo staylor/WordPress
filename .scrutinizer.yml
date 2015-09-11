@@ -24,6 +24,7 @@ filter:
         - wp-admin/includes/class-pclzip.php
         - wp-admin/includes/class-wp-upgrader.php
         - wp-admin/includes/deprecated.php
+        - wp-admin/includes/noop.php
     paths: {  }
 tools:
     php_code_sniffer:
