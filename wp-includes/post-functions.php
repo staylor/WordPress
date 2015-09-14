@@ -835,10 +835,11 @@ function get_post_type( $post = null ) {
 function get_post_type_object( $post_type ) {
 	global $wp_post_types;
 
-	if ( empty($wp_post_types[$post_type]) )
+	if ( ! is_scalar( $post_type ) || empty( $wp_post_types[ $post_type ] ) ) {
 		return null;
+	}
 
-	return $wp_post_types[$post_type];
+	return $wp_post_types[ $post_type ];
 }
 
 /**
@@ -1392,6 +1393,8 @@ function _get_custom_object_labels( $object, $nohier_vs_hier_defaults ) {
 		$defaults[$key] = $object->hierarchical ? $value[1] : $value[0];
 	}
 	$labels = array_merge( $defaults, $object->labels );
+	$object->labels = (object) $object->labels;
+	
 	return (object) $labels;
 }
 
@@ -1814,7 +1817,7 @@ function sanitize_post( $post, $context = 'display' ) {
 		foreach ( array_keys(get_object_vars($post)) as $field )
 			$post->$field = sanitize_post_field($field, $post->$field, $post->ID, $context);
 		$post->filter = $context;
-	} else {
+	} elseif ( is_array( $post ) ) {
 		// Check if post already filtered for this context.
 		if ( isset($post['filter']) && $context == $post['filter'] )
 			return $post;
@@ -1835,15 +1838,16 @@ function sanitize_post( $post, $context = 'display' ) {
  * are treated like 'display' when calling filters.
  *
  * @since 2.3.0
+ * @since 4.4.0 Like `sanitize_post()`, `$context` defaults to 'display'.
  *
  * @param string $field   The Post Object field name.
  * @param mixed  $value   The Post Object value.
  * @param int    $post_id Post ID.
- * @param string $context How to sanitize post fields. Looks for 'raw', 'edit',
- *                        'db', 'display', 'attribute' and 'js'.
+ * @param string $context Optional. How to sanitize post fields. Looks for 'raw', 'edit',
+ *                        'db', 'display', 'attribute' and 'js'. Default 'display'.
  * @return mixed Sanitized value.
  */
-function sanitize_post_field($field, $value, $post_id, $context) {
+function sanitize_post_field( $field, $value, $post_id, $context = 'display' ) {
 	$int_fields = array('ID', 'post_parent', 'menu_order');
 	if ( in_array($field, $int_fields) )
 		$value = (int) $value;
@@ -2315,6 +2319,20 @@ function wp_delete_post( $postid = 0, $force_delete = false ) {
 
 	if ( $post->post_type == 'attachment' )
 		return wp_delete_attachment( $postid, $force_delete );
+
+	/**
+	 * Filter whether a post deletion should take place.
+	 *
+	 * @since 4.4.0
+	 *
+	 * @param bool    $delete       Whether to go forward with deletion.
+	 * @param WP_Post $post         Post object.
+	 * @param bool    $force_delete Whether to bypass the trash.
+	 */
+	$check = apply_filters( 'pre_delete_post', null, $post, $force_delete );
+	if ( null !== $check ) {
+		return $check;
+	}
 
 	/**
 	 * Fires before a post is deleted, at the start of wp_delete_post().
@@ -3027,7 +3045,7 @@ function wp_insert_post( $postarr, $wp_error = false ) {
 
 	// These variables are needed by compact() later.
 	$post_content_filtered = $postarr['post_content_filtered'];
-	$post_author = empty( $postarr['post_author'] ) ? $user_id : $postarr['post_author'];
+	$post_author = isset( $postarr['post_author'] ) ? $postarr['post_author'] : $user_id;
 	$ping_status = empty( $postarr['ping_status'] ) ? get_default_comment_status( $post_type, 'pingback' ) : $postarr['ping_status'];
 	$to_ping = isset( $postarr['to_ping'] ) ? sanitize_trackback_urls( $postarr['to_ping'] ) : '';
 	$pinged = isset( $postarr['pinged'] ) ? $postarr['pinged'] : '';

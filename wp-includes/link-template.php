@@ -1205,13 +1205,15 @@ function get_edit_post_link( $id = 0, $context = 'display' ) {
  * Display edit post link for post.
  *
  * @since 1.0.0
+ * @since 4.4.0 The `$class` argument was added.
  *
  * @param string $text   Optional. Anchor text.
  * @param string $before Optional. Display before edit link.
  * @param string $after  Optional. Display after edit link.
  * @param int    $id     Optional. Post ID.
+ * @param string $class  Optional. Add custom class to link.
  */
-function edit_post_link( $text = null, $before = '', $after = '', $id = 0 ) {
+function edit_post_link( $text = null, $before = '', $after = '', $id = 0, $class = 'post-edit-link' ) {
 	if ( ! $post = get_post( $id ) ) {
 		return;
 	}
@@ -1224,7 +1226,7 @@ function edit_post_link( $text = null, $before = '', $after = '', $id = 0 ) {
 		$text = __( 'Edit This' );
 	}
 
-	$link = '<a class="post-edit-link" href="' . $url . '">' . $text . '</a>';
+	$link = '<a class="' . esc_attr( $class ) . '" href="' . $url . '">' . $text . '</a>';
 
 	/**
 	 * Filter the post edit link anchor tag.
@@ -1492,9 +1494,6 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 	$where = '';
 
 	if ( $in_same_term || ! empty( $excluded_terms ) ) {
-		$join = " INNER JOIN $wpdb->term_relationships AS tr ON p.ID = tr.object_id INNER JOIN $wpdb->term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id";
-		$where = $wpdb->prepare( "AND tt.taxonomy = %s", $taxonomy );
-
 		if ( ! empty( $excluded_terms ) && ! is_array( $excluded_terms ) ) {
 			// back-compat, $excluded_terms used to be $excluded_terms with IDs separated by " and "
 			if ( false !== strpos( $excluded_terms, ' and ' ) ) {
@@ -1508,6 +1507,9 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 		}
 
 		if ( $in_same_term ) {
+			$join .= " INNER JOIN $wpdb->term_relationships AS tr ON p.ID = tr.object_id INNER JOIN $wpdb->term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id";
+			$where .= $wpdb->prepare( "AND tt.taxonomy = %s", $taxonomy );
+
 			if ( ! is_object_in_taxonomy( $post->post_type, $taxonomy ) )
 				return '';
 			$term_array = wp_get_object_terms( $post->ID, $taxonomy, array( 'fields' => 'ids' ) );

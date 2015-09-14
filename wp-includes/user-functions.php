@@ -1916,7 +1916,15 @@ function reset_password( $user, $new_pass ) {
 	wp_set_password( $new_pass, $user->ID );
 	update_user_option( $user->ID, 'default_password_nag', false, true );
 
-	wp_password_change_notification( $user );
+	/**
+	 * Fires after the user's password is reset.
+	 *
+	 * @since 4.4.0
+	 *
+	 * @param object $user     The user.
+	 * @param string $new_pass New user password.
+	 */
+	do_action( 'after_password_reset', $user, $new_pass );
 }
 
 /**
@@ -2004,7 +2012,7 @@ function register_new_user( $user_login, $user_email ) {
 
 	update_user_option( $user_id, 'default_password_nag', true, true ); //Set up the Password change nag.
 
-	wp_new_user_notification( $user_id, 'both' );
+	wp_new_user_notification( $user_id, null, 'both' );
 
 	return $user_id;
 }

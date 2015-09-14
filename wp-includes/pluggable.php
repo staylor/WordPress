@@ -145,8 +145,9 @@ if ( !function_exists('get_user_by') ) :
  * Retrieve user info by a given field
  *
  * @since 2.8.0
+ * @since 4.4.0 Added 'ID' as an alias of 'id' for the `$field` parameter.
  *
- * @param string     $field The field to retrieve the user with. id | slug | email | login
+ * @param string     $field The field to retrieve the user with. id | ID | slug | email | login.
  * @param int|string $value A value for $field. A user ID, slug, email address, or login name.
  * @return WP_User|false WP_User object on success, false on failure.
  */
@@ -1667,9 +1668,9 @@ if ( !function_exists('wp_password_change_notification') ) :
  *
  * @since 2.7.0
  *
- * @param object $user User Object
+ * @param WP_User $user User object.
  */
-function wp_password_change_notification(&$user) {
+function wp_password_change_notification( $user ) {
 	// send a copy of password change notification to the admin
 	// but check to see if it's the admin whose password we're changing, and skip this
 	if ( 0 !== strcasecmp( $user->user_email, get_option( 'admin_email' ) ) ) {
@@ -1690,16 +1691,22 @@ if ( !function_exists('wp_new_user_notification') ) :
  *
  * @since 2.0.0
  * @since 4.3.0 The `$plaintext_pass` parameter was changed to `$notify`.
+ * @since 4.3.1 The `$plaintext_pass` parameter was deprecated. `$notify` added as a third parameter.
  *
  * @global wpdb         $wpdb      WordPress database object for queries.
  * @global PasswordHash $wp_hasher Portable PHP password hashing framework instance.
  *
- * @param int    $user_id User ID.
- * @param string $notify  Optional. Type of notification that should happen. Accepts 'admin' or an empty
- *                        string (admin only), or 'both' (admin and user). The empty string value was kept
- *                        for backward-compatibility purposes with the renamed parameter. Default empty.
+ * @param int    $user_id    User ID.
+ * @param null   $deprecated Not used (argument deprecated).
+ * @param string $notify     Optional. Type of notification that should happen. Accepts 'admin' or an empty
+ *                           string (admin only), or 'both' (admin and user). The empty string value was kept
+ *                           for backward-compatibility purposes with the renamed parameter. Default empty.
  */
-function wp_new_user_notification( $user_id, $notify = '' ) {
+function wp_new_user_notification( $user_id, $deprecated = null, $notify = '' ) {
+	if ( $deprecated !== null ) {
+		_deprecated_argument( __FUNCTION__, '4.3.1' );
+	}
+
 	global $wpdb, $wp_hasher;
 	$user = get_userdata( $user_id );
 

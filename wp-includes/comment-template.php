@@ -703,7 +703,8 @@ function get_comment_link( $comment = null, $args = array() ) {
  * @return string The link to the comments.
  */
 function get_comments_link( $post_id = 0 ) {
-	$comments_link = get_permalink( $post_id ) . '#comments';
+	$hash = get_comments_number( $post_id ) ? '#comments' : '#respond';
+	$comments_link = get_permalink( $post_id ) . $hash;
 	/**
 	 * Filter the returned post comments permalink.
 	 *
@@ -853,7 +854,7 @@ function get_comment_text( $comment_ID = 0, $args = array() ) {
 function comment_text( $comment_ID = 0, $args = array() ) {
 	$comment = get_comment( $comment_ID );
 
-	$comment_text = get_comment_text( $comment_ID , $args );
+	$comment_text = get_comment_text( $comment, $args );
 	/**
 	 * Filter the text of a comment to be displayed.
 	 *
