@@ -6,7 +6,6 @@
  * @subpackage Administration
  */
 
-// `wp_validate_action()` isn't loaded yet
 if ( isset( $_REQUEST['action'] ) && 'upload-attachment' === $_REQUEST['action'] ) {
 	define( 'DOING_AJAX', true );
 }
@@ -20,7 +19,7 @@ if ( defined('ABSPATH') )
 else
 	require_once( dirname( dirname( __FILE__ ) ) . '/wp-load.php' );
 
-if ( ! wp_validate_action( 'upload-attachment' ) ) {
+if ( ! ( isset( $_REQUEST['action'] ) && 'upload-attachment' == $_REQUEST['action'] ) ) {
 	// Flash often fails to send cookies with the POST or upload, so we need to pass it in GET or POST instead
 	if ( is_ssl() && empty($_COOKIE[SECURE_AUTH_COOKIE]) && !empty($_REQUEST['auth_cookie']) )
 		$_COOKIE[SECURE_AUTH_COOKIE] = $_REQUEST['auth_cookie'];
@@ -35,7 +34,7 @@ require_once( ABSPATH . 'wp-admin/admin.php' );
 
 header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
 
-if ( wp_validate_action( 'upload-attachment' ) ) {
+if ( isset( $_REQUEST['action'] ) && 'upload-attachment' === $_REQUEST['action'] ) {
 	include( ABSPATH . 'wp-admin/includes/ajax-actions.php' );
 
 	send_nosniff_header();
@@ -62,7 +61,10 @@ if ( isset($_REQUEST['attachment_id']) && ($id = intval($_REQUEST['attachment_id
 			if ( $thumb_url = wp_get_attachment_image_src( $id, 'thumbnail', true ) )
 				echo '<img class="pinkynail" src="' . esc_url( $thumb_url[0] ) . '" alt="" />';
 			echo '<a class="edit-attachment" href="' . esc_url( get_edit_post_link( $id ) ) . '" target="_blank">' . _x( 'Edit', 'media item' ) . '</a>';
-			$title = $post->post_title ? $post->post_title : wp_basename( $post->guid ); // Title shouldn't ever be empty, but use filename just in case.
+
+			// Title shouldn't ever be empty, but use filename just in case.
+			$file = get_attached_file( $post->ID );
+			$title = $post->post_title ? $post->post_title : wp_basename( $file );
 			echo '<div class="filename new"><span class="title">' . esc_html( wp_html_excerpt( $title, 60, '&hellip;' ) ) . '</span></div>';
 			break;
 		case 2 :

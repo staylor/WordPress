@@ -889,6 +889,18 @@ class WP_List_Table {
 	}
 
 	/**
+	 * Public wrapper for WP_List_Table::get_default_primary_column_name().
+	 *
+	 * @since 4.4.0
+	 * @access public
+	 *
+	 * @return string Name of the default primary column.
+	 */
+	public function get_primary_column() {
+		return $this->get_primary_column_name();
+	}
+
+	/**
 	 * Gets the name of the primary column.
 	 *
 	 * @since 4.3.0
@@ -896,7 +908,7 @@ class WP_List_Table {
 	 *
 	 * @return string The name of the primary column.
 	 */
-	public function get_primary_column_name() {
+	protected function get_primary_column_name() {
 		$columns = $this->get_columns();
 		$default = $this->get_default_primary_column_name();
 

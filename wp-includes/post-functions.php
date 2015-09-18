@@ -984,8 +984,26 @@ function get_post_types( $args = array(), $output = 'names', $operator = 'and' )
 function register_post_type( $post_type, $args = array() ) {
 	global $wp_post_types, $wp_rewrite, $wp;
 
-	if ( ! is_array( $wp_post_types ) )
+	if ( ! is_array( $wp_post_types ) ) {
 		$wp_post_types = array();
+	}
+
+	// Sanitize post type name
+	$post_type = sanitize_key( $post_type );
+
+	if ( empty( $args['_builtin'] ) ) {
+		/**
+		 * Filter the arguments for registering a post type.
+		 *
+		 * Not available for built-in post types.
+		 *
+		 * @since 4.4.0
+		 *
+		 * @param array|string $args      Array or string of arguments for registering a post type.
+		 * @param string       $post_type Post type key.
+		 */
+		$args = apply_filters( 'register_post_type_args', $args, $post_type );
+	}
 
 	// Args prefixed with an underscore are reserved for internal use.
 	$defaults = array(
@@ -1018,7 +1036,6 @@ function register_post_type( $post_type, $args = array() ) {
 	$args = wp_parse_args( $args, $defaults );
 	$args = (object) $args;
 
-	$post_type = sanitize_key( $post_type );
 	$args->name = $post_type;
 
 	if ( empty( $post_type ) || strlen( $post_type ) > 20 ) {
@@ -1072,12 +1089,15 @@ function register_post_type( $post_type, $args = array() ) {
 		add_post_type_support( $post_type, array( 'title', 'editor' ) );
 	}
 
-	if ( false !== $args->query_var && ! empty( $wp ) ) {
+	if ( false !== $args->query_var ) {
 		if ( true === $args->query_var )
 			$args->query_var = $post_type;
 		else
 			$args->query_var = sanitize_title_with_dashes( $args->query_var );
-		$wp->add_query_var( $args->query_var );
+
+		if ( $wp && is_post_type_viewable( $args ) ) {
+			$wp->add_query_var( $args->query_var );
+		}
 	}
 
 	if ( false !== $args->rewrite && ( is_admin() || '' != get_option( 'permalink_structure' ) ) ) {
@@ -1394,7 +1414,7 @@ function _get_custom_object_labels( $object, $nohier_vs_hier_defaults ) {
 	}
 	$labels = array_merge( $defaults, $object->labels );
 	$object->labels = (object) $object->labels;
-	
+
 	return (object) $labels;
 }
 
@@ -2370,9 +2390,14 @@ function wp_delete_post( $postid = 0, $force_delete = false ) {
 	// Point all attachments to this post up one level.
 	$wpdb->update( $wpdb->posts, $parent_data, $parent_where + array( 'post_type' => 'attachment' ) );
 
+	wp_defer_comment_counting( true );
+
 	$comment_ids = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM $wpdb->comments WHERE comment_post_ID = %d", $postid ));
-	foreach ( $comment_ids as $comment_id )
+	foreach ( $comment_ids as $comment_id ) {
 		wp_delete_comment( $comment_id, true );
+	}
+
+	wp_defer_comment_counting( false );
 
 	$post_meta_ids = $wpdb->get_col( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d ", $postid ));
 	foreach ( $post_meta_ids as $mid )
@@ -3183,6 +3208,11 @@ function wp_insert_post( $postarr, $wp_error = false ) {
 	if ( ! empty( $postarr['tax_input'] ) ) {
 		foreach ( $postarr['tax_input'] as $taxonomy => $tags ) {
 			$taxonomy_obj = get_taxonomy($taxonomy);
+			if ( ! $taxonomy_obj ) {
+				_doing_it_wrong( __FUNCTION__, sprintf( __( 'Invalid taxonomy: %s' ), $taxonomy ), '4.4.0' );
+				continue;
+			}
+
 			// array = hierarchical, string = non-hierarchical.
 			if ( is_array( $tags ) ) {
 				$tags = array_filter($tags);
@@ -4637,9 +4667,14 @@ function wp_delete_attachment( $post_id, $force_delete = false ) {
 	// Delete all for any posts.
 	delete_metadata( 'post', null, '_thumbnail_id', $post_id, true );
 
+	wp_defer_comment_counting( true );
+
 	$comment_ids = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM $wpdb->comments WHERE comment_post_ID = %d", $post_id ));
-	foreach ( $comment_ids as $comment_id )
+	foreach ( $comment_ids as $comment_id ) {
 		wp_delete_comment( $comment_id, true );
+	}
+
+	wp_defer_comment_counting( false );
 
 	$post_meta_ids = $wpdb->get_col( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d ", $post_id ));
 	foreach ( $post_meta_ids as $mid )
@@ -4964,7 +4999,8 @@ function wp_mime_type_icon( $mime = 0 ) {
 			$mime = (int) $mime;
 			if ( $post = get_post( $mime ) ) {
 				$post_id = (int) $post->ID;
-				$ext = preg_replace('/^.+?\.([^.]+)$/', '$1', $post->guid);
+				$file = get_attached_file( $post_id );
+				$ext = preg_replace('/^.+?\.([^.]+)$/', '$1', $file);
 				if ( !empty($ext) ) {
 					$post_mimes[] = $ext;
 					if ( $ext_type = wp_ext2type( $ext ) )
@@ -5045,11 +5081,16 @@ function wp_mime_type_icon( $mime = 0 ) {
 		$matches['default'] = array('default');
 
 		foreach ( $matches as $match => $wilds ) {
-			if ( isset($types[$wilds[0]])) {
-				$icon = $types[$wilds[0]];
-				if ( !is_numeric($mime) )
-					wp_cache_add("mime_type_icon_$mime", $icon);
-				break;
+			foreach ( $wilds as $wild ) {
+				if ( ! isset( $types[ $wild ] ) ) {
+					continue;
+				}
+
+				$icon = $types[ $wild ];
+				if ( ! is_numeric( $mime ) ) {
+					wp_cache_add( "mime_type_icon_$mime", $icon );
+				}
+				break 2;
 			}
 		}
 	}
@@ -5216,22 +5257,27 @@ function get_posts_by_author_sql( $post_type, $full = true, $post_author = null,
  * 'gmt' is when the last post was posted in GMT formatted date.
  *
  * @since 0.71
+ * @since 4.4.0 The `$post_type` argument was added.
  *
- * @param string $timezone The location to get the time. Accepts 'gmt', 'blog',
- *                         or 'server'. Default 'server'.
+ * @param string $timezone  Optional. The timezone for the timestamp. Accepts 'server', 'blog', or 'gmt'.
+ *                          'server' uses the server's internal timezone.
+ *                          'blog' uses the `post_modified` field, which proxies to the timezone set for the site.
+ *                          'gmt' uses the `post_modified_gmt` field.
+ *                          Default 'server'.
+ * @param string $post_type Optional. The post type to check. Default 'any'.
  * @return string The date of the last post.
  */
-function get_lastpostdate( $timezone = 'server' ) {
+function get_lastpostdate( $timezone = 'server', $post_type = 'any' ) {
 	/**
 	 * Filter the date the last post was published.
 	 *
 	 * @since 2.3.0
 	 *
-	 * @param string $date     Date the last post was published. Likely values are 'gmt',
-	 *                         'blog', or 'server'.
+	 * @param string $date     Date the last post was published.
 	 * @param string $timezone Location to use for getting the post published date.
+	 *                         See {@see get_lastpostdate()} for accepted `$timezone` values.
 	 */
-	return apply_filters( 'get_lastpostdate', _get_last_post_time( $timezone, 'date' ), $timezone );
+	return apply_filters( 'get_lastpostdate', _get_last_post_time( $timezone, 'date', $post_type ), $timezone );
 }
 
 /**
@@ -5242,20 +5288,21 @@ function get_lastpostdate( $timezone = 'server' ) {
  * 'gmt' is when the last post was modified in GMT time.
  *
  * @since 1.2.0
+ * @since 4.4.0 The `$post_type` argument was added.
  *
- * @param string $timezone Optional. The timezone for the timestamp. Uses the server's internal timezone.
- *                         Accepts 'server', 'blog', 'gmt'. or 'server'. 'server' uses the server's
- *                         internal timezone. 'blog' uses the `post_modified` field, which proxies
- *                         to the timezone set for the site. 'gmt' uses the `post_modified_gmt` field.
- *                         Default 'server'.
+ * @param string $timezone  Optional. The timezone for the timestamp. See {@see get_lastpostdate()}
+ *                          for information on accepted values.
+ *                          Default 'server'.
+ * @param string $post_type Optional. The post type to check. Default 'any'.
  * @return string The timestamp.
  */
-function get_lastpostmodified( $timezone = 'server' ) {
-	$lastpostmodified = _get_last_post_time( $timezone, 'modified' );
+function get_lastpostmodified( $timezone = 'server', $post_type = 'any' ) {
+	$lastpostmodified = _get_last_post_time( $timezone, 'modified', $post_type );
 
 	$lastpostdate = get_lastpostdate($timezone);
-	if ( $lastpostdate > $lastpostmodified )
+	if ( $lastpostdate > $lastpostmodified ) {
 		$lastpostmodified = $lastpostdate;
+	}
 
 	/**
 	 * Filter the date the last post was modified.
@@ -5264,7 +5311,7 @@ function get_lastpostmodified( $timezone = 'server' ) {
 	 *
 	 * @param string $lastpostmodified Date the last post was modified.
 	 * @param string $timezone         Location to use for getting the post modified date.
-	 *                                 See {@see get_lastpostmodified()} for accepted `$timezone` values.
+	 *                                 See {@see get_lastpostdate()} for accepted `$timezone` values.
 	 */
 	return apply_filters( 'get_lastpostmodified', $lastpostmodified, $timezone );
 }
@@ -5273,33 +5320,41 @@ function get_lastpostmodified( $timezone = 'server' ) {
  * Get the timestamp of the last time any post was modified or published.
  *
  * @since 3.1.0
+ * @since 4.4.0 The `$post_type` argument was added.
  * @access private
  *
  * @global wpdb $wpdb
  *
- * @param string $timezone The timezone for the timestamp. See {@see get_lastpostmodified()}
- *                         for information on accepted values.
- * @param string $field    Post field to check. Accepts 'date' or 'modified'.
+ * @param string $timezone  The timezone for the timestamp. See {@see get_lastpostdate()}
+ *                          for information on accepted values.
+ * @param string $field     Post field to check. Accepts 'date' or 'modified'.
+ * @param string $post_type Optional. The post type to check. Default 'any'.
  * @return string|false The timestamp.
  */
-function _get_last_post_time( $timezone, $field ) {
+function _get_last_post_time( $timezone, $field, $post_type = 'any' ) {
 	global $wpdb;
 
-	if ( !in_array( $field, array( 'date', 'modified' ) ) )
+	if ( ! in_array( $field, array( 'date', 'modified' ) ) ) {
 		return false;
+	}
 
 	$timezone = strtolower( $timezone );
 
 	$key = "lastpost{$field}:$timezone";
+	if ( 'any' !== $post_type ) {
+		$key .= ':' . sanitize_key( $post_type );
+	}
 
 	$date = wp_cache_get( $key, 'timeinfo' );
 
-	if ( !$date ) {
-		$add_seconds_server = date('Z');
-
-		$post_types = get_post_types( array( 'public' => true ) );
-		array_walk( $post_types, array( &$wpdb, 'escape_by_ref' ) );
-		$post_types = "'" . implode( "', '", $post_types ) . "'";
+	if ( ! $date ) {
+		if ( 'any' === $post_type ) {
+			$post_types = get_post_types( array( 'public' => true ) );
+			array_walk( $post_types, array( $wpdb, 'escape_by_ref' ) );
+			$post_types = "'" . implode( "', '", $post_types ) . "'";
+		} else {
+			$post_types = "'" . sanitize_key( $post_type ) . "'";
+		}
 
 		switch ( $timezone ) {
 			case 'gmt':
@@ -5309,12 +5364,14 @@ function _get_last_post_time( $timezone, $field ) {
 				$date = $wpdb->get_var("SELECT post_{$field} FROM $wpdb->posts WHERE post_status = 'publish' AND post_type IN ({$post_types}) ORDER BY post_{$field}_gmt DESC LIMIT 1");
 				break;
 			case 'server':
+				$add_seconds_server = date( 'Z' );
 				$date = $wpdb->get_var("SELECT DATE_ADD(post_{$field}_gmt, INTERVAL '$add_seconds_server' SECOND) FROM $wpdb->posts WHERE post_status = 'publish' AND post_type IN ({$post_types}) ORDER BY post_{$field}_gmt DESC LIMIT 1");
 				break;
 		}
 
-		if ( $date )
+		if ( $date ) {
 			wp_cache_set( $key, $date, 'timeinfo' );
+		}
 	}
 
 	return $date;
@@ -5537,6 +5594,7 @@ function _transition_post_status( $new_status, $old_status, $post ) {
 		foreach ( array( 'server', 'gmt', 'blog' ) as $timezone ) {
 			wp_cache_delete( "lastpostmodified:$timezone", 'timeinfo' );
 			wp_cache_delete( "lastpostdate:$timezone", 'timeinfo' );
+			wp_cache_delete( "lastpostdate:$timezone:{$post->post_type}", 'timeinfo' );
 		}
 	}
 

@@ -17,8 +17,8 @@ $wp_file_descriptions = array(
 	'rtl.css' => __( 'RTL Stylesheet' ),
 	'comments.php' => __( 'Comments' ),
 	'comments-popup.php' => __( 'Popup Comments' ),
-	'footer.php' => __( 'Footer' ),
-	'header.php' => __( 'Header' ),
+	'footer.php' => __( 'Theme Footer' ),
+	'header.php' => __( 'Theme Header' ),
 	'sidebar.php' => __( 'Sidebar' ),
 	'archive.php' => __( 'Archives' ),
 	'author.php' => __( 'Author Template' ),
@@ -36,7 +36,6 @@ $wp_file_descriptions = array(
 	'video.php' => __('Video Attachment Template'),
 	'audio.php' => __('Audio Attachment Template'),
 	'application.php' => __('Application Attachment Template'),
-	'my-hacks.php' => __( 'my-hacks.php (legacy hacks support)' ),
 	'.htaccess' => __( '.htaccess (for rewrite rules )' ),
 	// Deprecated files
 	'wp-layout.css' => __( 'Stylesheet' ),
@@ -154,7 +153,7 @@ function wp_tempnam( $filename = '', $dir = '' ) {
 	$temp_filename = basename( $filename );
 	$temp_filename = preg_replace( '|\.[^.]*$|', '', $temp_filename );
 
-	// If the folder is falsey, use it's parent directory name instead
+	// If the folder is falsey, use its parent directory name instead.
 	if ( ! $temp_filename ) {
 		return wp_tempnam( dirname( $filename ), $dir );
 	}

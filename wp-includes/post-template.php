@@ -899,6 +899,7 @@ function wp_link_pages( $args = '' ) {
 function _wp_link_page( $i ) {
 	global $wp_rewrite;
 	$post = get_post();
+	$query_args = array();
 
 	if ( 1 == $i ) {
 		$url = get_permalink();
@@ -912,16 +913,13 @@ function _wp_link_page( $i ) {
 	}
 
 	if ( is_preview() ) {
-		$url = add_query_arg( array(
-			'preview' => 'true'
-		), $url );
 
 		if ( ( 'draft' !== $post->post_status ) && isset( $_GET['preview_id'], $_GET['preview_nonce'] ) ) {
-			$url = add_query_arg( array(
-				'preview_id'    => wp_unslash( $_GET['preview_id'] ),
-				'preview_nonce' => wp_unslash( $_GET['preview_nonce'] )
-			), $url );
+			$query_args['preview_id'] = wp_unslash( $_GET['preview_id'] );
+			$query_args['preview_nonce'] = wp_unslash( $_GET['preview_nonce'] );
 		}
+
+		$url = get_preview_post_link( $post, $query_args, $url );
 	}
 
 	return '<a href="' . esc_url( $url ) . '">';
@@ -1189,24 +1187,40 @@ function wp_list_pages( $args = '' ) {
  * arguments.
  *
  * @since 2.7.0
+ * @since 4.4.0 Added `container`, `before`, `after`, and `walker` arguments.
  *
  * @param array|string $args {
  *     Optional. Arguments to generate a page menu. See wp_list_pages() for additional arguments.
  *
  *     @type string          $sort_column How to short the list of pages. Accepts post column names.
  *                                        Default 'menu_order, post_title'.
- *     @type string          $menu_class  Class to use for the div ID containing the page list. Default 'menu'.
+ *     @type string          $menu_class  Class to use for the element containing the page list. Default 'menu'.
+ *     @type string          $container   Element to use for the element containing the page list. Default 'div'.
  *     @type bool            $echo        Whether to echo the list or return it. Accepts true (echo) or false (return).
  *                                        Default true.
- *     @type string          $link_before The HTML or text to prepend to $show_home text. Default empty.
- *     @type string          $link_after  The HTML or text to append to $show_home text. Default empty.
  *     @type int|bool|string $show_home   Whether to display the link to the home page. Can just enter the text
  *                                        you'd like shown for the home link. 1|true defaults to 'Home'.
+ *     @type string          $link_before The HTML or text to prepend to $show_home text. Default empty.
+ *     @type string          $link_after  The HTML or text to append to $show_home text. Default empty.
+ *     @type string          $before      The HTML or text to prepend to the menu. Default is '<ul>'.
+ *     @type string          $after       The HTML or text to append to the menu. Default is '</ul>'.
+ *     @type Walker          $walker      Walker instance to use for listing pages. Default empty (Walker_Page).
  * }
  * @return string|void HTML menu
  */
 function wp_page_menu( $args = array() ) {
-	$defaults = array('sort_column' => 'menu_order, post_title', 'menu_class' => 'menu', 'echo' => true, 'link_before' => '', 'link_after' => '');
+	$defaults = array(
+		'sort_column' => 'menu_order, post_title',
+		'menu_class'  => 'menu',
+		'container'   => 'div',
+		'echo'        => true,
+		'show_home'   => false,
+		'link_before' => '',
+		'link_after'  => '',
+		'before'      => '<ul>',
+		'after'       => '</ul>',
+		'walker'      => '',
+	);
 	$args = wp_parse_args( $args, $defaults );
 
 	/**
@@ -1249,10 +1263,11 @@ function wp_page_menu( $args = array() ) {
 	$list_args['title_li'] = '';
 	$menu .= str_replace( array( "\r", "\n", "\t" ), '', wp_list_pages($list_args) );
 
-	if ( $menu )
-		$menu = '<ul>' . $menu . '</ul>';
-
-	$menu = '<div class="' . esc_attr($args['menu_class']) . '">' . $menu . "</div>\n";
+	if ( $menu ) {
+		$menu = $args['before'] . $menu . $args['after'];
+	}
+	$container = sanitize_text_field( $args['container'] );
+	$menu = "<{$container} class=\"" . esc_attr( $args['menu_class'] ) . '">' . $menu . "</{$container}>\n";
 
 	/**
 	 * Filter the HTML output of a page-based menu.

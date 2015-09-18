@@ -15,12 +15,13 @@
  * Retrieve variable in the WP_Query class.
  *
  * @since 1.5.0
+ * @since 3.9.0 The `$default` argument was introduced.
  *
  * @global WP_Query $wp_query
  *
  * @param string $var       The variable key to retrieve.
- * @param mixed  $default   Value to return if the query variable is not set. Default ''.
- * @return mixed
+ * @param mixed  $default   Optional. Value to return if the query variable is not set. Default empty.
+ * @return mixed Contents of the query variable.
  */
 function get_query_var( $var, $default = '' ) {
 	global $wp_query;
@@ -28,14 +29,16 @@ function get_query_var( $var, $default = '' ) {
 }
 
 /**
- * Retrieve the currently-queried object. Wrapper for $wp_query->get_queried_object()
+ * Retrieve the currently-queried object.
+ *
+ * Wrapper for WP_Query::get_queried_object().
  *
  * @since 3.1.0
  * @access public
  *
- * @global WP_Query $wp_query
+ * @global WP_Query $wp_query Global WP_Query instance.
  *
- * @return object
+ * @return object Queried object.
  */
 function get_queried_object() {
 	global $wp_query;
@@ -43,14 +46,15 @@ function get_queried_object() {
 }
 
 /**
- * Retrieve ID of the current queried object. Wrapper for $wp_query->get_queried_object_id()
+ * Retrieve ID of the current queried object.
+ *
+ * Wrapper for WP_Query::get_queried_object_id().
  *
  * @since 3.1.0
- * @access public
  *
- * @global WP_Query $wp_query
+ * @global WP_Query $wp_query Global WP_Query instance.
  *
- * @return int
+ * @return int ID of the queried object.
  */
 function get_queried_object_id() {
 	global $wp_query;
@@ -62,10 +66,10 @@ function get_queried_object_id() {
  *
  * @since 2.2.0
  *
- * @global WP_Query $wp_query
+ * @global WP_Query $wp_query Global WP_Query instance.
  *
  * @param string $var   Query variable key.
- * @param mixed  $value
+ * @param mixed  $value Query variable value.
  */
 function set_query_var( $var, $value ) {
 	global $wp_query;
@@ -1293,15 +1297,6 @@ class WP_Query {
 	 public $thumbnails_cached = false;
 
 	/**
-	 * Set if comment meta has already been cached
-	 *
-	 * @since 4.4.0
-	 * @access public
-	 * @var bool
-	 */
-	 public $comment_meta_cached = false;
-
-	/**
 	 * Cached list of search stopwords.
 	 *
 	 * @since 3.7.0
@@ -2367,11 +2362,13 @@ class WP_Query {
 	 * Retrieve query variable.
 	 *
 	 * @since 1.5.0
+	 * @since 3.9.0 The `$default` argument was introduced.
+	 *
 	 * @access public
 	 *
 	 * @param string $query_var Query variable key.
-	 * @param mixed  $default   Value to return if the query variable is not set. Default ''.
-	 * @return mixed
+	 * @param mixed  $default   Optional. Value to return if the query variable is not set. Default empty.
+	 * @return mixed Contents of the query variable.
 	 */
 	public function get( $query_var, $default = '' ) {
 		if ( isset( $this->query_vars[ $query_var ] ) ) {

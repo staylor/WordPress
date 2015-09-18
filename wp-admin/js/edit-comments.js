@@ -540,7 +540,7 @@ commentReply = {
 
 		$('a.cancel', row).click(function() { return commentReply.revert(); });
 		$('a.save', row).click(function() { return commentReply.send(); });
-		$('input#author, input#author-email, input#author-url', row).keypress(function(e){
+		$( 'input#author-name, input#author-email, input#author-url', row ).keypress( function( e ) {
 			if ( e.which == 13 ) {
 				commentReply.send();
 				e.preventDefault();
@@ -623,7 +623,8 @@ commentReply = {
 		var editRow, rowData, act, replyButton, editHeight,
 			t = this,
 			c = $('#comment-' + comment_id),
-			h = c.height();
+			h = c.height(),
+			colspanVal = 0;
 
 		t.close();
 		t.cid = comment_id;
@@ -633,15 +634,19 @@ commentReply = {
 		action = action || 'replyto';
 		act = 'edit' == action ? 'edit' : 'replyto';
 		act = t.act = act + '-comment';
+		colspanVal = $( 'th:visible, td:visible', c ).length;
 
-		$( 'td', editRow ).attr( 'colspan', $( 'th:visible, td:visible', c ).length );
+		// Make sure it's actually a table and there's a `colspan` value to apply.
+		if ( editRow.hasClass( 'inline-edit-row' ) && 0 !== colspanVal ) {
+			$( 'td', editRow ).attr( 'colspan', colspanVal );
+		}
 
 		$('#action', editRow).val(act);
 		$('#comment_post_ID', editRow).val(post_id);
 		$('#comment_ID', editRow).val(comment_id);
 
 		if ( action == 'edit' ) {
-			$('#author', editRow).val( $('div.author', rowData).text() );
+			$( '#author-name', editRow ).val( $( 'div.author', rowData ).text() );
 			$('#author-email', editRow).val( $('div.author-email', rowData).text() );
 			$('#author-url', editRow).val( $('div.author-url', rowData).text() );
 			$('#status', editRow).val( $('div.comment_status', rowData).text() );

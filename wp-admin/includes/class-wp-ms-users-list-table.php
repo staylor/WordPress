@@ -148,6 +148,7 @@ class WP_MS_Users_List_Table extends WP_List_Table {
 	public function get_columns() {
 		$users_columns = array(
 			'cb'         => '<input type="checkbox" />',
+			'id'         => __( 'ID' ),
 			'username'   => __( 'Username' ),
 			'name'       => __( 'Name' ),
 			'email'      => __( 'Email' ),
@@ -197,6 +198,18 @@ class WP_MS_Users_List_Table extends WP_List_Table {
 	}
 
 	/**
+	 * Handles the ID column output.
+	 *
+	 * @since 4.4.0
+	 * @access public
+	 *
+	 * @param WP_User $user The current WP_User object.
+	 */
+	public function column_id( $user ) {
+		echo $user->ID;
+	}
+
+	/**
 	 * Handles the username column output.
 	 *
 	 * @since 4.3.0
@@ -240,7 +253,7 @@ class WP_MS_Users_List_Table extends WP_List_Table {
 	 * @param WP_User $user The current WP_User object.
 	 */
 	public function column_email( $user ) {
-		echo "<a href='mailto:$user->user_email'>$user->user_email</a>";
+		echo "<a href='" . esc_url( "mailto:$user->user_email" ) . "'>$user->user_email</a>";
 	}
 
 	/**

@@ -5232,8 +5232,8 @@ class wp_xmlrpc_server extends IXR_Server {
 
 		$tags_input = isset( $content_struct['mt_keywords'] ) ? $content_struct['mt_keywords'] : null;
 
-		if ( ('publish' == $post_status) ) {
-			if ( ( 'page' == $post_type ) && ! current_user_can( 'publish_pages' ) ) {
+		if ( 'publish' == $post_status || 'private' == $post_status ) {
+			if ( 'page' == $post_type && ! current_user_can( 'publish_pages' ) ) {
 				return new IXR_Error( 401, __( 'Sorry, you do not have the right to publish this page.' ) );
 			} elseif ( ! current_user_can( 'publish_posts' ) ) {
 				return new IXR_Error( 401, __( 'Sorry, you do not have the right to publish this post.' ) );
@@ -5737,11 +5737,10 @@ class wp_xmlrpc_server extends IXR_Server {
 			'id'   => strval( $id ),
 			'file' => $name,
 			'url'  => $upload[ 'url' ],
-			'type' => $type
+			'type' => $upload[ 'type' ]
 		);
 
-		/** This filter is documented in wp-admin/includes/file.php */
-		return apply_filters( 'wp_handle_upload', $struct, 'upload' );
+		return $struct;
 	}
 
 	/* MovableType API functions

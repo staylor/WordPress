@@ -182,7 +182,11 @@ if ( $comment->comment_approved != '0' ) { // if not unapproved
 			$parent      = get_comment( $comment->comment_parent );
 			$parent_link = esc_url( get_comment_link( $parent ) );
 			$name        = get_comment_author( $parent );
-			printf( ' | ' . __( 'In reply to <a href="%1$s">%2$s</a>.' ), $parent_link, $name );
+			printf(
+				/* translators: %s: comment link */
+				' | ' . __( 'In reply to %s.' ),
+				'<a href="' . $parent_link . '">' . $name . '</a>'
+			);
 		}
 	?>
 	</td>
@@ -258,31 +262,31 @@ case 'unapprovecomment' :
 
 	switch ( $action ) {
 		case 'deletecomment' :
-			wp_delete_comment( $comment_id );
+			wp_delete_comment( $comment );
 			$redir = add_query_arg( array('deleted' => '1'), $redir );
 			break;
 		case 'trashcomment' :
-			wp_trash_comment($comment_id);
+			wp_trash_comment( $comment );
 			$redir = add_query_arg( array('trashed' => '1', 'ids' => $comment_id), $redir );
 			break;
 		case 'untrashcomment' :
-			wp_untrash_comment($comment_id);
+			wp_untrash_comment( $comment );
 			$redir = add_query_arg( array('untrashed' => '1'), $redir );
 			break;
 		case 'spamcomment' :
-			wp_spam_comment($comment_id);
+			wp_spam_comment( $comment );
 			$redir = add_query_arg( array('spammed' => '1', 'ids' => $comment_id), $redir );
 			break;
 		case 'unspamcomment' :
-			wp_unspam_comment($comment_id);
+			wp_unspam_comment( $comment );
 			$redir = add_query_arg( array('unspammed' => '1'), $redir );
 			break;
 		case 'approvecomment' :
-			wp_set_comment_status( $comment_id, 'approve' );
+			wp_set_comment_status( $comment, 'approve' );
 			$redir = add_query_arg( array( 'approved' => 1 ), $redir );
 			break;
 		case 'unapprovecomment' :
-			wp_set_comment_status( $comment_id, 'hold' );
+			wp_set_comment_status( $comment, 'hold' );
 			$redir = add_query_arg( array( 'unapproved' => 1 ), $redir );
 			break;
 	}
