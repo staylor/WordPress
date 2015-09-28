@@ -266,7 +266,7 @@ class wpdb {
 	 * @var array
 	 */
 	var $tables = array( 'posts', 'comments', 'links', 'options', 'postmeta',
-		'terms', 'term_taxonomy', 'term_relationships', 'commentmeta' );
+		'terms', 'term_taxonomy', 'term_relationships', 'termmeta', 'commentmeta' );
 
 	/**
 	 * List of deprecated WordPress tables
@@ -381,6 +381,15 @@ class wpdb {
 	 * @var string
 	 */
 	public $term_taxonomy;
+
+	/**
+	 * WordPress Term Meta table.
+	 *
+	 * @since 4.4.0
+	 * @access public
+	 * @var string
+	 */
+	public $termmeta;
 
 	/*
 	 * Global and Multisite tables
@@ -2405,7 +2414,7 @@ class wpdb {
 		}
 
 		// Skip this entirely if this isn't a MySQL database.
-		if ( false === $this->is_mysql ) {
+		if ( empty( $this->is_mysql ) ) {
 			return false;
 		}
 
@@ -2454,7 +2463,7 @@ class wpdb {
 		$columnkey = strtolower( $column );
 
 		// Skip this entirely if this isn't a MySQL database.
-		if ( false === $this->is_mysql ) {
+		if ( empty( $this->is_mysql ) ) {
 			return false;
 		}
 
