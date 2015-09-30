@@ -850,7 +850,7 @@ function wp_import_upload_form( $action ) {
  *
  * @param string           $id            String for use in the 'id' attribute of tags.
  * @param string           $title         Title of the meta box.
- * @param callback         $callback      Function that fills the box with the desired content.
+ * @param callable         $callback      Function that fills the box with the desired content.
  *                                        The function should echo its output.
  * @param string|WP_Screen $screen        Optional. The screen on which to show the box (like a post
  *                                        type, 'link', or 'comment'). Default is the current screen.
@@ -1631,12 +1631,14 @@ function _post_states($post) {
 		$post_states['scheduled'] = __( 'Scheduled' );
 	}
 
-	if ( get_option( 'page_on_front' ) == $post->ID ) {
-		$post_states['page_on_front'] = __( 'Front Page' );
-	}
+	if ( 'page' === get_option( 'show_on_front' ) ) {
+		if ( intval( get_option( 'page_on_front' ) ) === $post->ID ) {
+			$post_states['page_on_front'] = __( 'Front Page' );
+		}
 
-	if ( get_option( 'page_for_posts' ) == $post->ID ) {
-		$post_states['page_for_posts'] = __( 'Posts Page' );
+		if ( intval( get_option( 'page_for_posts' ) ) === $post->ID ) {
+			$post_states['page_for_posts'] = __( 'Posts Page' );
+		}
 	}
 
 	/**

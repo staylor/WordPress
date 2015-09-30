@@ -219,7 +219,7 @@ class Walker_Nav_Menu extends Walker {
  *     @type string        $container       Whether to wrap the ul, and what to wrap it with. Default 'div'.
  *     @type string        $container_class Class that is applied to the container. Default 'menu-{menu slug}-container'.
  *     @type string        $container_id    The ID that is applied to the container. Default empty.
- *     @type callback|bool $fallback_cb     If the menu doesn't exists, a callback function will fire.
+ *     @type callable|bool $fallback_cb     If the menu doesn't exists, a callback function will fire.
  *                                          Default is 'wp_page_menu'. Set to false for no fallback.
  *     @type string        $before          Text before the link text. Default empty.
  *     @type string        $after           Text after the link text. Default empty.
@@ -334,7 +334,7 @@ function wp_nav_menu( $args = array() ) {
 		 *                    Default is array containing 'div' and 'nav'.
 		 */
 		$allowed_tags = apply_filters( 'wp_nav_menu_container_allowedtags', array( 'div', 'nav' ) );
-		if ( in_array( $args->container, $allowed_tags ) ) {
+		if ( is_string( $args->container ) && in_array( $args->container, $allowed_tags ) ) {
 			$show_container = true;
 			$class = $args->container_class ? ' class="' . esc_attr( $args->container_class ) . '"' : ' class="menu-'. $menu->slug .'-container"';
 			$id = $args->container_id ? ' id="' . esc_attr( $args->container_id ) . '"' : '';
