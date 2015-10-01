@@ -667,7 +667,14 @@ function comment_ID() {
  * @global bool       $in_comment_loop
  *
  * @param WP_Comment|int|null $comment Comment to retrieve. Default current comment.
- * @param array               $args    Optional. An array of arguments to override the defaults.
+ * @param array               $args {
+ *     An array of optional arguments to override the defaults.
+ *
+ *     @type string $type      Passed to {@see get_page_of_comment()}.
+ *     @type int    $page      Current page of comments, for calculating comment pagination.
+ *     @type int    $per_page  Per-page value for comment pagination.
+ *     @type int    $max_depth Passed to {@see get_page_of_comment()}.
+ * }
  * @return string The permalink to the given comment.
  */
 function get_comment_link( $comment = null, $args = array() ) {
@@ -1233,57 +1240,54 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 		$per_page = (int) get_option( 'comments_per_page' );
 	}
 
-	$flip_comment_order = $trim_comments_on_page = false;
-	if ( $post->comment_count > $per_page ) {
-		$comment_args['number'] = $per_page;
-
-		/*
-		 * For legacy reasons, higher page numbers always mean more recent comments, regardless of sort order.
-		 * Since we don't have full pagination info until after the query, we use some tricks to get the
-		 * right comments for the current page.
-		 *
-		 * Abandon all hope, ye who enter here!
-		 */
-		$page = (int) get_query_var( 'cpage' );
-		if ( 'newest' === get_option( 'default_comments_page' ) ) {
-			if ( $page ) {
-				$comment_args['order'] = 'ASC';
-
-				/*
-				 * We don't have enough data (namely, the total number of comments) to calculate an
-				 * exact offset. We'll fetch too many comments, and trim them as needed
-				 * after the query.
-				 */
-				$offset = ( $page - 2 ) * $per_page;
-				if ( 0 > $offset ) {
-					// `WP_Comment_Query` doesn't support negative offsets.
-					$comment_args['offset'] = 0;
-				} else {
-					$comment_args['offset'] = $offset;
-				}
-
-				// Fetch double the number of comments we need.
-				$comment_args['number'] += $per_page;
-				$trim_comments_on_page = true;
-			} else {
-				$comment_args['order'] = 'DESC';
-				$comment_args['offset'] = 0;
-				$flip_comment_order = true;
-			}
-		} else {
+	/*
+	 * For legacy reasons, higher page numbers always mean more recent comments, regardless of sort order.
+	 * Since we don't have full pagination info until after the query, we use some tricks to get the
+	 * right comments for the current page.
+	 *
+	 * Abandon all hope, ye who enter here!
+	 */
+	$flip_comment_order = $trim_comments_on_page= false;
+	$comment_args['number'] = $per_page;
+	$page = (int) get_query_var( 'cpage' );
+	if ( 'newest' === get_option( 'default_comments_page' ) ) {
+		if ( $page ) {
 			$comment_args['order'] = 'ASC';
-			if ( $page ) {
-				$comment_args['offset'] = ( $page - 1 ) * $per_page;
-			} else {
+
+			/*
+			 * We don't have enough data (namely, the total number of comments) to calculate an
+			 * exact offset. We'll fetch too many comments, and trim them as needed
+			 * after the query.
+			 */
+			$offset = ( $page - 2 ) * $per_page;
+			if ( 0 > $offset ) {
+				// `WP_Comment_Query` doesn't support negative offsets.
 				$comment_args['offset'] = 0;
+			} else {
+				$comment_args['offset'] = $offset;
 			}
+
+			// Fetch double the number of comments we need.
+			$comment_args['number'] += $per_page;
+			$trim_comments_on_page = true;
+		} else {
+			$comment_args['order'] = 'DESC';
+			$comment_args['offset'] = 0;
+			$flip_comment_order = true;
+		}
+	} else {
+		$comment_args['order'] = 'ASC';
+		if ( $page ) {
+			$comment_args['offset'] = ( $page - 1 ) * $per_page;
+		} else {
+			$comment_args['offset'] = 0;
 		}
 	}
 
 	$comment_query = new WP_Comment_Query( $comment_args );
 	$_comments = $comment_query->comments;
 
-	// Delightful pagination quirk #1: first page of results sometimes needs reordering.
+	// Delightful pagination quirk #1: `wp_list_comments()` expects the order to be wrong, so we make it wrong.
 	if ( $flip_comment_order ) {
 		$_comments = array_reverse( $_comments );
 	}
@@ -1323,6 +1327,10 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 	 * @param int   $post_ID  Post ID.
 	 */
 	$wp_query->comments = apply_filters( 'comments_array', $comments_flat, $post->ID );
+
+	// Set up lazy-loading for comment metadata.
+	add_action( 'get_comment_metadata', array( $wp_query, 'lazyload_comment_meta' ), 10, 2 );
+
 	$comments = &$wp_query->comments;
 	$wp_query->comment_count = count($wp_query->comments);
 	$wp_query->max_num_comment_pages = $comment_query->max_num_pages;

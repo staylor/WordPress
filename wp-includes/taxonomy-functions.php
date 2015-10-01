@@ -781,23 +781,28 @@ function get_term($term, $taxonomy, $output = OBJECT, $filter = 'raw') {
  * @todo Better formatting for DocBlock.
  *
  * @since 2.3.0
+ * @since 4.4.0 `$taxonomy` is optional if `$field` is 'term_taxonomy_id'.
  *
  * @global wpdb $wpdb WordPress database abstraction object.
  * @see sanitize_term_field() The $context param lists the available values for get_term_by() $filter param.
  *
  * @param string     $field    Either 'slug', 'name', 'id' (term_id), or 'term_taxonomy_id'
  * @param string|int $value    Search for this term value
- * @param string     $taxonomy Taxonomy Name
+ * @param string     $taxonomy Taxonomy name. Optional, if `$field` is 'term_taxonomy_id'.
  * @param string     $output   Constant OBJECT, ARRAY_A, or ARRAY_N
  * @param string     $filter   Optional, default is raw or no WordPress defined filter will applied.
  * @return object|array|null|WP_Error|false Term Row from database.
  *                                          Will return false if $taxonomy does not exist or $term was not found.
  */
-function get_term_by($field, $value, $taxonomy, $output = OBJECT, $filter = 'raw') {
+function get_term_by( $field, $value, $taxonomy = '', $output = OBJECT, $filter = 'raw' ) {
 	global $wpdb;
 
-	if ( ! taxonomy_exists($taxonomy) )
+	// 'term_taxonomy_id' lookups don't require taxonomy checks.
+	if ( 'term_taxonomy_id' !== $field && ! taxonomy_exists( $taxonomy ) ) {
 		return false;
+	}
+
+	$tax_clause = $wpdb->prepare( "AND tt.taxonomy = %s", $taxonomy );
 
 	if ( 'slug' == $field ) {
 		$field = 't.slug';
@@ -811,6 +816,9 @@ function get_term_by($field, $value, $taxonomy, $output = OBJECT, $filter = 'raw
 	} elseif ( 'term_taxonomy_id' == $field ) {
 		$value = (int) $value;
 		$field = 'tt.term_taxonomy_id';
+
+		// No `taxonomy` clause when searching by 'term_taxonomy_id'.
+		$tax_clause = '';
 	} else {
 		$term = get_term( (int) $value, $taxonomy, $output, $filter );
 		if ( is_wp_error( $term ) || is_null( $term ) ) {
@@ -819,9 +827,14 @@ function get_term_by($field, $value, $taxonomy, $output = OBJECT, $filter = 'raw
 		return $term;
 	}
 
-	$term = $wpdb->get_row( $wpdb->prepare( "SELECT t.*, tt.* FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.taxonomy = %s AND $field = %s LIMIT 1", $taxonomy, $value ) );
+	$term = $wpdb->get_row( $wpdb->prepare( "SELECT t.*, tt.* FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE $field = %s $tax_clause LIMIT 1", $value ) );
 	if ( ! $term )
 		return false;
+
+	// In the case of 'term_taxonomy_id', override the provided `$taxonomy` with whatever we find in the db.
+	if ( 'term_taxonomy_id' === $field ) {
+		$taxonomy = $term->taxonomy;
+	}
 
 	wp_cache_add( $term->term_id, $term, $taxonomy );
 
@@ -1488,6 +1501,11 @@ function get_terms( $taxonomies, $args = '' ) {
  * @return int|bool Meta ID on success, false on failure.
  */
 function add_term_meta( $term_id, $meta_key, $meta_value, $unique = false ) {
+	// Bail if term meta table is not installed.
+	if ( get_option( 'db_version' ) < 34370 ) {
+		return false;
+	}
+
 	$added = add_metadata( 'term', $term_id, $meta_key, $meta_value, $unique );
 
 	// Bust term query cache.
@@ -1509,6 +1527,11 @@ function add_term_meta( $term_id, $meta_key, $meta_value, $unique = false ) {
  * @return bool True on success, false on failure.
  */
 function delete_term_meta( $term_id, $meta_key, $meta_value = '' ) {
+	// Bail if term meta table is not installed.
+	if ( get_option( 'db_version' ) < 34370 ) {
+		return false;
+	}
+
 	$deleted = delete_metadata( 'term', $term_id, $meta_key, $meta_value );
 
 	// Bust term query cache.
@@ -1531,6 +1554,11 @@ function delete_term_meta( $term_id, $meta_key, $meta_value = '' ) {
  * @return mixed If `$single` is false, an array of metadata values. If `$single` is true, a single metadata value.
  */
 function get_term_meta( $term_id, $key = '', $single = false ) {
+	// Bail if term meta table is not installed.
+	if ( get_option( 'db_version' ) < 34370 ) {
+		return false;
+	}
+
 	return get_metadata( 'term', $term_id, $key, $single );
 }
 
@@ -1550,6 +1578,11 @@ function get_term_meta( $term_id, $key = '', $single = false ) {
  * @return int|bool Meta ID if the key didn't previously exist. True on successful update. False on failure.
  */
 function update_term_meta( $term_id, $meta_key, $meta_value, $prev_value = '' ) {
+	// Bail if term meta table is not installed.
+	if ( get_option( 'db_version' ) < 34370 ) {
+		return false;
+	}
+
 	$updated = update_metadata( 'term', $term_id, $meta_key, $meta_value, $prev_value );
 
 	// Bust term query cache.
@@ -1572,64 +1605,12 @@ function update_term_meta( $term_id, $meta_key, $meta_value, $prev_value = '' ) 
  * @return array|false Returns false if there is nothing to update. Returns an array of metadata on success.
  */
 function update_termmeta_cache( $term_ids ) {
-	return update_meta_cache( 'term', $term_ids );
-}
-
-/**
- * Lazy-loads termmeta when inside of a `WP_Query` loop.
- *
- * As a rule, term queries (`get_terms()` and `wp_get_object_terms()`) prime the metadata cache for matched terms by
- * default. However, this can cause a slight performance penalty, especially when that metadata is not actually used.
- * In the context of a `WP_Query` loop, we're able to avoid this potential penalty. `update_object_term_cache()`,
- * called from `update_post_caches()`, does not 'update_term_meta_cache'. Instead, the first time `get_term_meta()` is
- * called from within a `WP_Query` loop, the current function detects the fact, and then primes the metadata cache for
- * all terms attached to all posts in the loop, with a single database query.
- *
- * @since 4.4.0
- *
- * @param null $check   The `$check` param passed from the 'pre_term_metadata' hook.
- * @param int  $term_id ID of the term whose metadata is being cached.
- * @return null In order not to short-circuit `get_metadata()`.
- */
-function wp_lazyload_term_meta( $check, $term_id ) {
-	global $wp_query;
-
-	if ( $wp_query instanceof WP_Query && ! empty( $wp_query->posts ) && $wp_query->get( 'update_post_term_cache' ) ) {
-		// We can only lazyload if the entire post object is present.
-		$posts = array();
-		foreach ( $wp_query->posts as $post ) {
-			if ( $post instanceof WP_Post ) {
-				$posts[] = $post;
-			}
-		}
-
-		if ( empty( $posts ) ) {
-			return;
-		}
-
-		// Fetch cached term_ids for each post. Keyed by term_id for faster lookup.
-		$term_ids = array();
-		foreach ( $posts as $post ) {
-			$taxonomies = get_object_taxonomies( $post->post_type );
-			foreach ( $taxonomies as $taxonomy ) {
-				// No extra queries. Term cache should already be primed by 'update_post_term_cache'.
-				$terms = get_object_term_cache( $post->ID, $taxonomy );
-				if ( false !== $terms ) {
-					foreach ( $terms as $term ) {
-						if ( ! isset( $term_ids[ $term->term_id ] ) ) {
-							$term_ids[ $term->term_id ] = 1;
-						}
-					}
-				}
-			}
-		}
-
-		if ( $term_ids ) {
-			update_termmeta_cache( array_keys( $term_ids ) );
-		}
+	// Bail if term meta table is not installed.
+	if ( get_option( 'db_version' ) < 34370 ) {
+		return;
 	}
 
-	return $check;
+	return update_meta_cache( 'term', $term_ids );
 }
 
 /**
