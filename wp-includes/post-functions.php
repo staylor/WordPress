@@ -1322,6 +1322,9 @@ function _post_type_meta_capabilities( $capabilities = null ) {
  * - remove_featured_image - Default is Remove featured image.
  * - use_featured_image - Default is Use as featured image.
  * - menu_name - Default is the same as `name`.
+ * - views - String for the table views hidden heading.
+ * - pagination - String for the table pagination hidden heading.
+ * - list - String for the table hidden heading.
  *
  * Above, the first default value is for non-hierarchical post types (like posts)
  * and the second one is for hierarchical post types (like pages).
@@ -1356,6 +1359,9 @@ function get_post_type_labels( $post_type_object ) {
 		'set_featured_image' => array( __( 'Set featured image' ), __( 'Set featured image' ) ),
 		'remove_featured_image' => array( __( 'Remove featured image' ), __( 'Remove featured image' ) ),
 		'use_featured_image' => array( __( 'Use as featured image' ), __( 'Use as featured image' ) ),
+		'views' => array( __( 'Filter posts list' ), __( 'Filter pages list' ) ),
+		'pagination' => array( __( 'Posts list navigation' ), __( 'Pages list navigation' ) ),
+		'list' => array( __( 'Posts list' ), __( 'Pages list' ) ),
 	);
 	$nohier_vs_hier_defaults['menu_name'] = $nohier_vs_hier_defaults['name'];
 
@@ -1573,21 +1579,16 @@ function is_post_type_viewable( $post_type_object ) {
  * @see WP_Query::parse_query()
  *
  * @param array $args {
- *     Optional. Arguments to retrieve posts. {@see WP_Query::parse_query()} for more
+ *     Optional. Arguments to retrieve posts. See WP_Query::parse_query() for all
  *     available arguments.
  *
  *     @type int        $numberposts      Total number of posts to retrieve. Is an alias of $posts_per_page
- *                                        in WP_Query. Accepts 1+ and -1 for all. Default 5.
- *     @type int        $offset           The number of posts to offset before retrieval. Default 0.
+ *                                        in WP_Query. Accepts -1 for all. Default 5.
  *     @type int|string $category         Category ID or comma-separated list of IDs (this or any children).
  *                                        Is an alias of $cat in WP_Query. Default 0.
- *     @type string     $orderby          Which field to order posts by. Accepts post fields. Default 'date'.
  *     @type array      $include          An array of post IDs to retrieve, sticky posts will be included.
  *                                        Is an alias of $post__in in WP_Query. Default empty array.
  *     @type array      $exclude          An array of post IDs not to retrieve. Default empty array.
- *     @type string     $meta_key         Custom field key. Default empty.
- *     @type mixed      $meta_value       Custom field value. Default empty string.
- *     @type string     $post_type        Post type. Default 'post'.
  *     @type bool       $suppress_filters Whether to suppress filters. Default true.
  * }
  * @return array List of posts.
@@ -3012,7 +3013,11 @@ function wp_insert_post( $postarr, $wp_error = false ) {
 	 * is not 'draft' or 'pending', set date to now.
 	 */
 	if ( empty( $postarr['post_date'] ) || '0000-00-00 00:00:00' == $postarr['post_date'] ) {
-		$post_date = current_time( 'mysql' );
+		if ( empty( $postarr['post_date_gmt'] ) || '0000-00-00 00:00:00' == $postarr['post_date_gmt'] ) {
+			$post_date = current_time( 'mysql' );
+		} else {
+			$post_date = get_date_from_gmt( $postarr['post_date_gmt'] );
+		}
 	} else {
 		$post_date = $postarr['post_date'];
 	}
@@ -4280,15 +4285,18 @@ function get_page_uri( $page ) {
  * @param array|string $args {
  *     Optional. Array or string of arguments to retrieve pages.
  *
- *     @type int          $child_of     Page ID to return child and grandchild pages of.
- *                                      Default 0, or no restriction.
+ *     @type int          $child_of     Page ID to return child and grandchild pages of. Note: The value
+ *                                      of `$hierarchical` has no bearing on whether `$child_of` returns
+ *                                      hierarchical results. Default 0, or no restriction.
  *     @type string       $sort_order   How to sort retrieved pages. Accepts 'ASC', 'DESC'. Default 'ASC'.
  *     @type string       $sort_column  What columns to sort pages by, comma-separated. Accepts 'post_author',
  *                                      'post_date', 'post_title', 'post_name', 'post_modified', 'menu_order',
  *                                      'post_modified_gmt', 'post_parent', 'ID', 'rand', 'comment_count'.
  *                                      'post_' can be omitted for any values that start with it.
  *                                      Default 'post_title'.
- *     @type bool         $hierarchical Whether to return pages hierarchically. Default true.
+ *     @type bool         $hierarchical Whether to return pages hierarchically. If false in conjunction with
+ *                                      `$child_of` also being false, both arguments will be disregarded.
+ *                                      Default true.
  *     @type array        $exclude      Array of page IDs to exclude. Default empty array.
  *     @type array        $include      Array of page IDs to include. Cannot be used with `$child_of`,
  *                                      `$parent`, `$exclude`, `$meta_key`, `$meta_value`, or `$hierarchical`.
@@ -4297,8 +4305,7 @@ function get_page_uri( $page ) {
  *     @type string       $meta_value   Only include pages with this meta value. Requires `$meta_key`.
  *                                      Default empty.
  *     @type string       $authors      A comma-separated list of author IDs. Default empty.
- *     @type int          $parent       Page ID to return direct children of. `$hierarchical` must be false.
- *                                      Default -1, or no restriction.
+ *     @type int          $parent       Page ID to return direct children of. Default -1, or no restriction.
  *     @type string|array $exclude_tree Comma-separated string or array of page IDs to exclude.
  *                                      Default empty array.
  *     @type int          $number       The number of pages to return. Default 0, or all pages.

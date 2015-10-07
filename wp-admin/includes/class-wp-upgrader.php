@@ -844,6 +844,8 @@ class Plugin_Upgrader extends WP_Upgrader {
 		$this->install_strings();
 
 		add_filter('upgrader_source_selection', array($this, 'check_package') );
+		// Clear cache so wp_update_plugins() knows about the new plugin.
+		add_action( 'upgrader_process_complete', 'wp_clean_plugins_cache', 9, 0 );
 
 		$this->run( array(
 			'package' => $package,
@@ -856,6 +858,7 @@ class Plugin_Upgrader extends WP_Upgrader {
 			)
 		) );
 
+		remove_action( 'upgrader_process_complete', 'wp_clean_plugins_cache', 9 );
 		remove_filter('upgrader_source_selection', array($this, 'check_package') );
 
 		if ( ! $this->result || is_wp_error($this->result) )
@@ -1408,6 +1411,8 @@ class Theme_Upgrader extends WP_Upgrader {
 
 		add_filter('upgrader_source_selection', array($this, 'check_package') );
 		add_filter('upgrader_post_install', array($this, 'check_parent_theme_filter'), 10, 3);
+		// Clear cache so wp_update_themes() knows about the new theme.
+		add_action( 'upgrader_process_complete', 'wp_clean_themes_cache', 9, 0 );
 
 		$this->run( array(
 			'package' => $package,
@@ -1420,6 +1425,7 @@ class Theme_Upgrader extends WP_Upgrader {
 			),
 		) );
 
+		remove_action( 'upgrader_process_complete', 'wp_clean_themes_cache', 9 );
 		remove_filter('upgrader_source_selection', array($this, 'check_package') );
 		remove_filter('upgrader_post_install', array($this, 'check_parent_theme_filter'));
 
@@ -1867,9 +1873,14 @@ class Language_Pack_Upgrader extends WP_Upgrader {
 			return;
 		}
 
-		$skin = new Language_Pack_Upgrader_Skin( array(
-			'skip_header_footer' => true,
-		) );
+		// Re-use the automatic upgrader skin if the parent upgrader is using it.
+		if ( $upgrader && $upgrader->skin instanceof Automatic_Upgrader_Skin ) {
+			$skin = $upgrader->skin;
+		} else {
+			$skin = new Language_Pack_Upgrader_Skin( array(
+				'skip_header_footer' => true,
+			) );
+		}
 
 		$lp_upgrader = new Language_Pack_Upgrader( $skin );
 		$lp_upgrader->bulk_upgrade( $language_updates );
@@ -2357,7 +2368,7 @@ class Core_Upgrader extends WP_Upgrader {
 		if ( version_compare( $wp_version, $offered_ver, '>' ) )
 			return false;
 
-		$failure_data = get_site_option( 'auto_core_update_failed' );
+		$failure_data = get_network_option( 'auto_core_update_failed' );
 		if ( $failure_data ) {
 			// If this was a critical update failure, cannot update.
 			if ( ! empty( $failure_data['critical'] ) )
@@ -2593,7 +2604,7 @@ class WP_Automatic_Updater {
 		if ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS )
 			return true;
 
-		if ( defined( 'WP_INSTALLING' ) )
+		if ( wp_installing() )
 			return true;
 
 		// More fine grained control can be done through the WP_AUTO_UPDATE_CORE constant and filters.
@@ -2769,10 +2780,10 @@ class WP_Automatic_Updater {
 	 * @param object $item The update offer.
 	 */
 	protected function send_core_update_notification_email( $item ) {
-		$notified = get_site_option( 'auto_core_update_notified' );
+		$notified = get_network_option( 'auto_core_update_notified' );
 
 		// Don't notify if we've already notified the same email address of the same version.
-		if ( $notified && $notified['email'] == get_site_option( 'admin_email' ) && $notified['version'] == $item->current )
+		if ( $notified && $notified['email'] == get_network_option( 'admin_email' ) && $notified['version'] == $item->current )
 			return false;
 
 		// See if we need to notify users of a core update.
@@ -3097,7 +3108,7 @@ class WP_Automatic_Updater {
 				$critical_data['rollback_code'] = $rollback_result->get_error_code();
 				$critical_data['rollback_data'] = $rollback_result->get_error_data();
 			}
-			update_site_option( 'auto_core_update_failed', $critical_data );
+			update_network_option( 'auto_core_update_failed', $critical_data );
 			$this->send_email( 'critical', $core_update, $result );
 			return;
 		}
@@ -3115,17 +3126,17 @@ class WP_Automatic_Updater {
 		 */
 		$send = true;
   		$transient_failures = array( 'incompatible_archive', 'download_failed', 'insane_distro' );
-  		if ( in_array( $error_code, $transient_failures ) && ! get_site_option( 'auto_core_update_failed' ) ) {
+  		if ( in_array( $error_code, $transient_failures ) && ! get_network_option( 'auto_core_update_failed' ) ) {
   			wp_schedule_single_event( time() + HOUR_IN_SECONDS, 'wp_maybe_auto_update' );
   			$send = false;
   		}
 
-  		$n = get_site_option( 'auto_core_update_notified' );
+  		$n = get_network_option( 'auto_core_update_notified' );
 		// Don't notify if we've already notified the same email address of the same version of the same notification type.
-		if ( $n && 'fail' == $n['type'] && $n['email'] == get_site_option( 'admin_email' ) && $n['version'] == $core_update->current )
+		if ( $n && 'fail' == $n['type'] && $n['email'] == get_network_option( 'admin_email' ) && $n['version'] == $core_update->current )
 			$send = false;
 
-		update_site_option( 'auto_core_update_failed', array(
+		update_network_option( 'auto_core_update_failed', array(
 			'attempted'  => $core_update->current,
 			'current'    => $wp_version,
 			'error_code' => $error_code,
@@ -3151,9 +3162,9 @@ class WP_Automatic_Updater {
 	 * @param mixed  $result      Optional. The result for the core update. Can be WP_Error.
 	 */
 	protected function send_email( $type, $core_update, $result = null ) {
-		update_site_option( 'auto_core_update_notified', array(
+		update_network_option( 'auto_core_update_notified', array(
 			'type'      => $type,
-			'email'     => get_site_option( 'admin_email' ),
+			'email'     => get_network_option( 'admin_email' ),
 			'version'   => $core_update->current,
 			'timestamp' => time(),
 		) );
@@ -3309,7 +3320,7 @@ class WP_Automatic_Updater {
 			$body .= "\n";
 		}
 
-		$to  = get_site_option( 'admin_email' );
+		$to  = get_network_option( 'admin_email' );
 		$headers = '';
 
 		$email = compact( 'to', 'subject', 'body', 'headers' );
@@ -3368,7 +3379,7 @@ class WP_Automatic_Updater {
 
 		// Plugins, Themes, Translations
 		foreach ( array( 'plugin', 'theme', 'translation' ) as $type ) {
-    		
+
 			/**
 			 * Filter to control whether a notification email is sent to the site admin email address for
 			 * plugin, theme, and translation updates.
@@ -3483,7 +3494,7 @@ Thanks! -- The WordPress Team" ) );
 		}
 
 		$email = array(
-			'to'      => get_site_option( 'admin_email' ),
+			'to'      => get_network_option( 'admin_email' ),
 			'subject' => $subject,
 			'body'    => implode( "\n", $body ),
 			'headers' => ''

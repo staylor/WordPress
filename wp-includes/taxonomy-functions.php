@@ -346,6 +346,19 @@ function register_taxonomy( $taxonomy, $object_type, $args = array() ) {
 	if ( ! is_array( $wp_taxonomies ) )
 		$wp_taxonomies = array();
 
+	$args = wp_parse_args( $args );
+
+	/**
+	 * Filter the arguments for registering a taxonomy.
+	 *
+	 * @since 4.4.0
+	 *
+	 * @param array  $args        Array of arguments for registering a taxonomy.
+	 * @param array  $object_type Array of names of object types for the taxonomy.
+	 * @param string $taxonomy    Taxonomy key.
+	 */
+	$args = apply_filters( 'register_taxonomy_args', $args, $taxonomy, (array) $object_type );
+
 	$defaults = array(
 		'labels'                => array(),
 		'description'           => '',
@@ -364,7 +377,7 @@ function register_taxonomy( $taxonomy, $object_type, $args = array() ) {
 		'update_count_callback' => '',
 		'_builtin'              => false,
 	);
-	$args = wp_parse_args( $args, $defaults );
+	$args = array_merge( $defaults, $args );
 
 	if ( empty( $taxonomy ) || strlen( $taxonomy ) > 32 ) {
 		_doing_it_wrong( __FUNCTION__, __( 'Taxonomy names must be between 1 and 32 characters in length.' ), '4.2' );
@@ -482,6 +495,8 @@ function register_taxonomy( $taxonomy, $object_type, $args = array() ) {
  * - choose_from_most_used - This string isn't used on hierarchical taxonomies. Default is "Choose from the most used tags", used in the meta box.
  * - not_found - Default is "No tags found"/"No categories found", used in the meta box and taxonomy list table.
  * - no_terms - Default is "No tags"/"No categories", used in the posts and media list tables.
+ * - pagination - String for the table pagination hidden heading.
+ * - list - String for the table hidden heading.
  *
  * Above, the first default value is for non-hierarchical taxonomies (like tags) and the second one is for hierarchical taxonomies (like categories).
  *
@@ -521,6 +536,8 @@ function get_taxonomy_labels( $tax ) {
 		'choose_from_most_used' => array( __( 'Choose from the most used tags' ), null ),
 		'not_found' => array( __( 'No tags found.' ), __( 'No categories found.' ) ),
 		'no_terms' => array( __( 'No tags' ), __( 'No categories' ) ),
+		'pagination' => array( __( 'Tags list navigation' ), __( 'Categories list navigation' ) ),
+		'list' => array( __( 'Tags list' ), __( 'Categories list' ) ),
 	);
 	$nohier_vs_hier_defaults['menu_name'] = $nohier_vs_hier_defaults['name'];
 
@@ -2503,7 +2520,26 @@ function wp_insert_term( $term, $taxonomy, $args = array() ) {
 	 * Prevent the creation of terms with duplicate names at the same level of a taxonomy hierarchy,
 	 * unless a unique slug has been explicitly provided.
 	 */
-	if ( $name_match = get_term_by( 'name', $name, $taxonomy ) ) {
+	$name_matches = get_terms( $taxonomy, array(
+		'name' => $name,
+		'hide_empty' => false,
+	) );
+
+	/*
+	 * The `name` match in `get_terms()` doesn't differentiate accented characters,
+	 * so we do a stricter comparison here.
+	 */
+	$name_match = null;
+	if ( $name_matches ) {
+		foreach ( $name_matches as $_match ) {
+			if ( strtolower( $name ) === strtolower( $_match->name ) ) {
+				$name_match = $_match;
+				break;
+			}
+		}
+	}
+
+	if ( $name_match ) {
 		$slug_match = get_term_by( 'slug', $slug, $taxonomy );
 		if ( ! $slug_provided || $name_match->slug === $slug || $slug_match ) {
 			if ( is_taxonomy_hierarchical( $taxonomy ) ) {
@@ -3630,7 +3666,7 @@ function _get_term_children( $term_id, $terms, $taxonomy, &$ancestors = array() 
  *
  * @global wpdb $wpdb WordPress database abstraction object.
  *
- * @param array  $terms    List of term IDs, passed by reference.
+ * @param array  $terms    List of term objects, passed by reference.
  * @param string $taxonomy Term context.
  */
 function _pad_term_counts( &$terms, $taxonomy ) {
@@ -4358,8 +4394,10 @@ function is_object_in_term( $object_id, $taxonomy, $terms = null ) {
 		return new WP_Error( 'invalid_object', __( 'Invalid object ID' ) );
 
 	$object_terms = get_object_term_cache( $object_id, $taxonomy );
-	if ( false === $object_terms )
-		 $object_terms = wp_get_object_terms( $object_id, $taxonomy );
+	if ( false === $object_terms ) {
+		$object_terms = wp_get_object_terms( $object_id, $taxonomy, array( 'update_term_meta_cache' => false ) );
+		wp_cache_set( $object_id, $object_terms, "{$taxonomy}_relationships" );
+	}
 
 	if ( is_wp_error( $object_terms ) )
 		return $object_terms;

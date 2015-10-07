@@ -1008,7 +1008,7 @@ function wp_dashboard_primary() {
 			 *
 			 * @param string $link The widget's primary link URL.
 			 */
-			'link' => apply_filters( 'dashboard_primary_link', __( 'http://wordpress.org/news/' ) ),
+			'link' => apply_filters( 'dashboard_primary_link', __( 'https://wordpress.org/news/' ) ),
 
 			/**
 			 * Filter the primary feed URL for the 'WordPress News' dashboard widget.
@@ -1196,7 +1196,7 @@ function wp_dashboard_plugins_output( $rss, $args = array() ) {
  * @return bool|null True if not multisite, user can't upload files, or the space check option is disabled.
 */
 function wp_dashboard_quota() {
-	if ( !is_multisite() || !current_user_can( 'upload_files' ) || get_site_option( 'upload_space_check_disabled' ) )
+	if ( !is_multisite() || !current_user_can( 'upload_files' ) || get_network_option( 'upload_space_check_disabled' ) )
 		return true;
 
 	$quota = get_space_allowed();

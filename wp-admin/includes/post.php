@@ -1004,15 +1004,21 @@ function wp_edit_posts_query( $q = false ) {
 		$perm = 'readable';
 	}
 
-	if ( isset($q['orderby']) )
+	if ( isset( $q['orderby'] ) ) {
 		$orderby = $q['orderby'];
-	elseif ( isset($q['post_status']) && in_array($q['post_status'], array('pending', 'draft')) )
+	} elseif ( isset( $q['post_status'] ) && in_array( $q['post_status'], array( 'pending', 'draft' ) ) ) {
 		$orderby = 'modified';
+	} else {
+		$orderby = 'date';
+	}
 
-	if ( isset($q['order']) )
+	if ( isset( $q['order'] ) ) {
 		$order = $q['order'];
-	elseif ( isset($q['post_status']) && 'pending' == $q['post_status'] )
+	} elseif ( isset( $q['post_status'] ) && 'pending' == $q['post_status'] ) {
 		$order = 'ASC';
+	} else {
+		$order = 'desc';
+	}
 
 	$per_page = "edit_{$post_type}_per_page";
 	$posts_per_page = (int) get_user_option( $per_page );
@@ -1321,14 +1327,14 @@ function get_sample_permalink_html( $id, $new_title = null, $new_slug = null ) {
 		}
 	} else {
 		if ( function_exists( 'mb_strlen' ) ) {
-			if ( mb_strlen( $post_name ) > 30 ) {
-				$post_name_abridged = mb_substr( $post_name, 0, 14 ) . '&hellip;' . mb_substr( $post_name, -14 );
+			if ( mb_strlen( $post_name ) > 34 ) {
+				$post_name_abridged = mb_substr( $post_name, 0, 16 ) . '&hellip;' . mb_substr( $post_name, -16 );
 			} else {
 				$post_name_abridged = $post_name;
 			}
 		} else {
-			if ( strlen( $post_name ) > 30 ) {
-				$post_name_abridged = substr( $post_name, 0, 14 ) . '&hellip;' . substr( $post_name, -14 );
+			if ( strlen( $post_name ) > 34 ) {
+				$post_name_abridged = substr( $post_name, 0, 16 ) . '&hellip;' . substr( $post_name, -16 );
 			} else {
 				$post_name_abridged = $post_name;
 			}
