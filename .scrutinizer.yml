@@ -4,6 +4,7 @@ filter:
         - wp-content/*
         - wp-includes/pomo/*
         - wp-includes/ID3/*
+        - wp-includes/random_compat/*
         - wp-includes/SimplePie/*
         - wp-includes/Text/*
         - wp-includes/atomlib.php
