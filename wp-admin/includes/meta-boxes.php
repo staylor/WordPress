@@ -3,15 +3,23 @@
 // -- Post related Meta Boxes
 
 /**
- * Display post submit form fields.
+ * Displays post submit form fields.
  *
  * @since 2.7.0
  *
  * @global string $action
  *
- * @param object $post
+ * @param WP_Post  $post Current post object.
+ * @param array    $args {
+ *     Array of arguments for building the post submit meta box.
+ *
+ *     @type string   $id       Meta box ID.
+ *     @type string   $title    Meta box title.
+ *     @type callable $callback Meta box display callback.
+ *     @type array    $args     Extra meta box arguments.
+ * }
  */
-function post_submit_meta_box($post, $args = array() ) {
+function post_submit_meta_box( $post, $args = array() ) {
 	global $action;
 
 	$post_type = $post->post_type;
@@ -51,6 +59,16 @@ if ( 'publish' == $post->post_status ) {
 <input type="hidden" name="wp-preview" id="wp-preview" value="" />
 </div>
 <?php endif; // public post type ?>
+<?php
+/**
+ * Fires before the post time/date setting in the Publish meta box.
+ *
+ * @since 4.4.0
+ *
+ * @param WP_Post $post WP_Post object for the current post.
+ */
+do_action( 'post_submitbox_minor_actions', $post );
+?>
 <div class="clear"></div>
 </div><!-- #minor-publishing-actions -->
 
@@ -207,8 +225,11 @@ if ( $can_publish ) : // Contributors don't get to choose the date of publish ?>
  * Fires after the post time/date setting in the Publish meta box.
  *
  * @since 2.9.0
+ * @since 4.4.0 Added the `$post` parameter.
+ *
+ * @param WP_Post $post WP_Post object for the current post.
  */
-do_action( 'post_submitbox_misc_actions' );
+do_action( 'post_submitbox_misc_actions', $post );
 ?>
 </div>
 <div class="clear"></div>
