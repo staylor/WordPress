@@ -13,7 +13,7 @@
  * @param array    $args {
  *     Array of arguments for building the post submit meta box.
  *
- *     @type string   $id       Meta box ID.
+ *     @type string   $id       Meta box 'id' attribute.
  *     @type string   $title    Meta box title.
  *     @type callable $callback Meta box display callback.
  *     @type array    $args     Extra meta box arguments.
@@ -170,7 +170,7 @@ echo esc_html( $visibility_trans ); ?></span>
 </div><!-- .misc-pub-section -->
 
 <?php
-/* translators: Publish box date format, see http://php.net/date */
+/* translators: Publish box date format, see https://secure.php.net/date */
 $datef = __( 'M j, Y @ H:i' );
 if ( 0 != $post->ID ) {
 	if ( 'future' == $post->post_status ) { // scheduled for publishing at a future date
@@ -190,20 +190,9 @@ if ( 0 != $post->ID ) {
 	$date = date_i18n( $datef, strtotime( current_time('mysql') ) );
 }
 
-if ( ! empty( $args['args']['revisions_count'] ) ) :
-	$revisions_to_keep = wp_revisions_to_keep( $post );
-?>
+if ( ! empty( $args['args']['revisions_count'] ) ) : ?>
 <div class="misc-pub-section misc-pub-revisions">
-<?php
-	if ( $revisions_to_keep > 0 && $revisions_to_keep <= $args['args']['revisions_count'] ) {
-		echo '<span title="' . esc_attr( sprintf( __( 'Your site is configured to keep only the last %s revisions.' ),
-			number_format_i18n( $revisions_to_keep ) ) ) . '">';
-		printf( __( 'Revisions: %s' ), '<b>' . number_format_i18n( $args['args']['revisions_count'] ) . '+</b>' );
-		echo '</span>';
-	} else {
-		printf( __( 'Revisions: %s' ), '<b>' . number_format_i18n( $args['args']['revisions_count'] ) . '</b>' );
-	}
-?>
+	<?php printf( __( 'Revisions: %s' ), '<b>' . number_format_i18n( $args['args']['revisions_count'] ) . '</b>' ); ?>
 	<a class="hide-if-no-js" href="<?php echo esc_url( get_edit_post_link( $args['args']['revision_id'] ) ); ?>"><span aria-hidden="true"><?php _ex( 'Browse', 'revisions' ); ?></span> <span class="screen-reader-text"><?php _e( 'Browse revisions' ); ?></span></a>
 </div>
 <?php endif;
@@ -307,7 +296,7 @@ function attachment_submit_meta_box( $post ) {
 
 <div id="misc-publishing-actions">
 	<?php
-	/* translators: Publish box date format, see http://php.net/date */
+	/* translators: Publish box date format, see https://secure.php.net/date */
 	$datef = __( 'M j, Y @ H:i' );
 	$stamp = __('Uploaded on: <b>%1$s</b>');
 	$date = date_i18n( $datef, strtotime( $post->post_date ) );
@@ -334,7 +323,7 @@ function attachment_submit_meta_box( $post ) {
 	<?php
 	if ( current_user_can( 'delete_post', $post->ID ) )
 		if ( EMPTY_TRASH_DAYS && MEDIA_TRASH ) {
-			echo "<a class='submitdelete deletion' href='" . get_delete_post_link( $post->ID ) . "'>" . __( 'Trash' ) . "</a>";
+			echo "<a class='submitdelete deletion' href='" . get_delete_post_link( $post->ID ) . "'>" . _x( 'Trash', 'verb' ) . "</a>";
 		} else {
 			$delete_ays = ! MEDIA_TRASH ? " onclick='return showNotice.warn();'" : '';
 			echo  "<a class='submitdelete deletion'$delete_ays href='" . get_delete_post_link( $post->ID, null, true ) . "'>" . __( 'Delete Permanently' ) . "</a>";
@@ -364,7 +353,7 @@ function attachment_submit_meta_box( $post ) {
  * @param array   $box {
  *     Post formats meta box arguments.
  *
- *     @type string   $id       Meta box ID.
+ *     @type string   $id       Meta box 'id' attribute.
  *     @type string   $title    Meta box title.
  *     @type callable $callback Meta box display callback.
  *     @type array    $args     Extra meta box arguments.
@@ -405,7 +394,7 @@ function post_format_meta_box( $post, $box ) {
  * @param array   $box {
  *     Tags meta box arguments.
  *
- *     @type string   $id       Meta box ID.
+ *     @type string   $id       Meta box 'id' attribute.
  *     @type string   $title    Meta box title.
  *     @type callable $callback Meta box display callback.
  *     @type array    $args {
@@ -427,19 +416,24 @@ function post_tags_meta_box( $post, $box ) {
 	$taxonomy = get_taxonomy( $r['taxonomy'] );
 	$user_can_assign_terms = current_user_can( $taxonomy->cap->assign_terms );
 	$comma = _x( ',', 'tag delimiter' );
+	$terms_to_edit = get_terms_to_edit( $post->ID, $tax_name );
+	if ( ! is_string( $terms_to_edit ) ) {
+		$terms_to_edit = '';
+	}
 ?>
 <div class="tagsdiv" id="<?php echo $tax_name; ?>">
 	<div class="jaxtag">
 	<div class="nojs-tags hide-if-js">
-	<p><?php echo $taxonomy->labels->add_or_remove_items; ?></p>
-	<textarea name="<?php echo "tax_input[$tax_name]"; ?>" rows="3" cols="20" class="the-tags" id="tax-input-<?php echo $tax_name; ?>" <?php disabled( ! $user_can_assign_terms ); ?>><?php echo str_replace( ',', $comma . ' ', get_terms_to_edit( $post->ID, $tax_name ) ); // textarea_escaped by esc_attr() ?></textarea></div>
+		<label for="tax-input-<?php echo $tax_name; ?>"><?php echo $taxonomy->labels->add_or_remove_items; ?></label>
+		<p><textarea name="<?php echo "tax_input[$tax_name]"; ?>" rows="3" cols="20" class="the-tags" id="tax-input-<?php echo $tax_name; ?>" <?php disabled( ! $user_can_assign_terms ); ?> aria-describedby="new-tag-<?php echo $tax_name; ?>-desc"><?php echo str_replace( ',', $comma . ' ', $terms_to_edit ); // textarea_escaped by esc_attr() ?></textarea></p>
+	</div>
  	<?php if ( $user_can_assign_terms ) : ?>
 	<div class="ajaxtag hide-if-no-js">
-		<label class="screen-reader-text" for="new-tag-<?php echo $tax_name; ?>"><?php echo $box['title']; ?></label>
-		<p><input type="text" id="new-tag-<?php echo $tax_name; ?>" name="newtag[<?php echo $tax_name; ?>]" class="newtag form-input-tip" size="16" autocomplete="off" value="" />
+		<label class="screen-reader-text" for="new-tag-<?php echo $tax_name; ?>"><?php echo $taxonomy->labels->add_new_item; ?></label>
+		<p><input type="text" id="new-tag-<?php echo $tax_name; ?>" name="newtag[<?php echo $tax_name; ?>]" class="newtag form-input-tip" size="16" autocomplete="off" aria-describedby="new-tag-<?php echo $tax_name; ?>-desc" value="" />
 		<input type="button" class="button tagadd" value="<?php esc_attr_e('Add'); ?>" /></p>
 	</div>
-	<p class="howto"><?php echo $taxonomy->labels->separate_items_with_commas; ?></p>
+	<p class="howto" id="new-tag-<?php echo $tax_name; ?>-desc"><?php echo $taxonomy->labels->separate_items_with_commas; ?></p>
 	<?php endif; ?>
 	</div>
 	<div class="tagchecklist"></div>
@@ -461,7 +455,7 @@ function post_tags_meta_box( $post, $box ) {
  * @param array   $box {
  *     Categories meta box arguments.
  *
- *     @type string   $id       Meta box ID.
+ *     @type string   $id       Meta box 'id' attribute.
  *     @type string   $title    Meta box title.
  *     @type callable $callback Meta box display callback.
  *     @type array    $args {
@@ -505,14 +499,12 @@ function post_categories_meta_box( $post, $box ) {
 		</div>
 	<?php if ( current_user_can( $taxonomy->cap->edit_terms ) ) : ?>
 			<div id="<?php echo $tax_name; ?>-adder" class="wp-hidden-children">
-				<h4>
-					<a id="<?php echo $tax_name; ?>-add-toggle" href="#<?php echo $tax_name; ?>-add" class="hide-if-no-js">
-						<?php
-							/* translators: %s: add new taxonomy label */
-							printf( __( '+ %s' ), $taxonomy->labels->add_new_item );
-						?>
-					</a>
-				</h4>
+				<a id="<?php echo $tax_name; ?>-add-toggle" href="#<?php echo $tax_name; ?>-add" class="hide-if-no-js taxonomy-add-new">
+					<?php
+						/* translators: %s: add new taxonomy label */
+						printf( __( '+ %s' ), $taxonomy->labels->add_new_item );
+					?>
+				</a>
 				<p id="<?php echo $tax_name; ?>-add" class="category-add wp-hidden-child">
 					<label class="screen-reader-text" for="new<?php echo $tax_name; ?>"><?php echo $taxonomy->labels->add_new_item; ?></label>
 					<input type="text" name="new<?php echo $tax_name; ?>" id="new<?php echo $tax_name; ?>" class="form-required form-input-tip" value="<?php echo esc_attr( $taxonomy->labels->new_item_name ); ?>" aria-required="true"/>
@@ -530,7 +522,7 @@ function post_categories_meta_box( $post, $box ) {
 					);
 
 					/**
-					 * Filter the arguments for the taxonomy parent dropdown on the Post Edit page.
+					 * Filters the arguments for the taxonomy parent dropdown on the Post Edit page.
 					 *
 					 * @since 4.4.0
 					 *
@@ -577,7 +569,13 @@ function post_categories_meta_box( $post, $box ) {
 function post_excerpt_meta_box($post) {
 ?>
 <label class="screen-reader-text" for="excerpt"><?php _e('Excerpt') ?></label><textarea rows="1" cols="40" name="excerpt" id="excerpt"><?php echo $post->post_excerpt; // textarea_escaped ?></textarea>
-<p><?php _e('Excerpts are optional hand-crafted summaries of your content that can be used in your theme. <a href="https://codex.wordpress.org/Excerpt" target="_blank">Learn more about manual excerpts.</a>'); ?></p>
+<p><?php
+	printf(
+		/* translators: %s: Codex URL */
+		__( 'Excerpts are optional hand-crafted summaries of your content that can be used in your theme. <a href="%s">Learn more about manual excerpts</a>.' ),
+		__( 'https://codex.wordpress.org/Excerpt' )
+	);
+?></p>
 <?php
 }
 
@@ -589,7 +587,8 @@ function post_excerpt_meta_box($post) {
  * @param object $post
  */
 function post_trackback_meta_box($post) {
-	$form_trackback = '<input type="text" name="trackback_url" id="trackback_url" class="code" value="'. esc_attr( str_replace("\n", ' ', $post->to_ping) ) .'" />';
+	$form_trackback = '<input type="text" name="trackback_url" id="trackback_url" class="code" value="' .
+		esc_attr( str_replace( "\n", ' ', $post->to_ping ) ) . '" aria-describedby="trackback-url-desc" />';
 	if ('' != $post->pinged) {
 		$pings = '<p>'. __('Already pinged:') . '</p><ul>';
 		$already_pinged = explode("\n", trim($post->pinged));
@@ -600,8 +599,18 @@ function post_trackback_meta_box($post) {
 	}
 
 ?>
-<p><label for="trackback_url"><?php _e('Send trackbacks to:'); ?></label> <?php echo $form_trackback; ?><br /> (<?php _e('Separate multiple URLs with spaces'); ?>)</p>
-<p><?php _e('Trackbacks are a way to notify legacy blog systems that you&#8217;ve linked to them. If you link other WordPress sites, they&#8217;ll be notified automatically using <a href="https://codex.wordpress.org/Introduction_to_Blogging#Managing_Comments" target="_blank">pingbacks</a>, no other action necessary.'); ?></p>
+<p>
+	<label for="trackback_url"><?php _e( 'Send trackbacks to:' ); ?></label>
+	<?php echo $form_trackback; ?>
+</p>
+<p id="trackback-url-desc" class="howto"><?php _e( 'Separate multiple URLs with spaces' ); ?></p>
+<p><?php
+	printf(
+		/* translators: %s: Codex URL */
+		__( 'Trackbacks are a way to notify legacy blog systems that you&#8217;ve linked to them. If you link other WordPress sites, they&#8217;ll be notified automatically using <a href="%s">pingbacks</a>, no other action necessary.' ),
+		__( 'https://codex.wordpress.org/Introduction_to_Blogging#Managing_Comments' )
+	);
+?></p>
 <?php
 if ( ! empty($pings) )
 	echo $pings;
@@ -627,7 +636,13 @@ foreach ( $metadata as $key => $value ) {
 list_meta( $metadata );
 meta_form( $post ); ?>
 </div>
-<p><?php _e('Custom fields can be used to add extra metadata to a post that you can <a href="https://codex.wordpress.org/Using_Custom_Fields" target="_blank">use in your theme</a>.'); ?></p>
+<p><?php
+	printf(
+		/* translators: %s: Codex URL */
+		__( 'Custom fields can be used to add extra metadata to a post that you can <a href="%s">use in your theme</a>.' ),
+		__( 'https://codex.wordpress.org/Using_Custom_Fields' )
+	);
+?></p>
 <?php
 }
 
@@ -643,7 +658,12 @@ function post_comment_status_meta_box($post) {
 <input name="advanced_view" type="hidden" value="1" />
 <p class="meta-options">
 	<label for="comment_status" class="selectit"><input name="comment_status" type="checkbox" id="comment_status" value="open" <?php checked($post->comment_status, 'open'); ?> /> <?php _e( 'Allow comments.' ) ?></label><br />
-	<label for="ping_status" class="selectit"><input name="ping_status" type="checkbox" id="ping_status" value="open" <?php checked($post->ping_status, 'open'); ?> /> <?php printf( __( 'Allow <a href="%s" target="_blank">trackbacks and pingbacks</a> on this page.' ), __( 'https://codex.wordpress.org/Introduction_to_Blogging#Managing_Comments' ) ); ?></label>
+	<label for="ping_status" class="selectit"><input name="ping_status" type="checkbox" id="ping_status" value="open" <?php checked($post->ping_status, 'open'); ?> /> <?php
+		printf(
+			/* translators: %s: Codex URL */
+			__( 'Allow <a href="%s">trackbacks and pingbacks</a> on this page.' ),
+			__( 'https://codex.wordpress.org/Introduction_to_Blogging#Managing_Comments' ) );
+		?></label>
 	<?php
 	/**
 	 * Fires at the end of the Discussion meta box on the post editing screen.
@@ -739,7 +759,8 @@ function post_author_meta_box($post) {
 		'who' => 'authors',
 		'name' => 'post_author_override',
 		'selected' => empty($post->ID) ? $user_ID : $post->post_author,
-		'include_selected' => true
+		'include_selected' => true,
+		'show' => 'display_name_with_login',
 	) );
 }
 
@@ -777,7 +798,7 @@ function page_attributes_meta_box($post) {
 		);
 
 		/**
-		 * Filter the arguments used to generate a Pages drop-down element.
+		 * Filters the arguments used to generate a Pages drop-down element.
 		 *
 		 * @since 3.3.0
 		 *
@@ -814,7 +835,7 @@ function page_attributes_meta_box($post) {
 <label class="screen-reader-text" for="page_template"><?php _e('Page Template') ?></label><select name="page_template" id="page_template">
 <?php
 /**
- * Filter the title of the default page template displayed in the drop-down.
+ * Filters the title of the default page template displayed in the drop-down.
  *
  * @since 4.1.0
  *
@@ -832,7 +853,7 @@ $default_title = apply_filters( 'default_page_template_title',  __( 'Default Tem
 <p><strong><?php _e('Order') ?></strong></p>
 <p><label class="screen-reader-text" for="menu_order"><?php _e('Order') ?></label><input name="menu_order" type="text" size="4" id="menu_order" value="<?php echo esc_attr($post->menu_order) ?>" /></p>
 <?php if ( 'page' == $post->post_type && get_current_screen()->get_help_tabs() ) { ?>
-<p><?php _e( 'Need help? Use the Help tab in the upper right of your screen.' ); ?></p>
+<p><?php _e( 'Need help? Use the Help tab above the screen title.' ); ?></p>
 <?php
 	}
 }
@@ -941,7 +962,7 @@ function link_categories_meta_box($link) {
 	</div>
 
 	<div id="category-adder" class="wp-hidden-children">
-		<h4><a id="category-add-toggle" href="#category-add"><?php _e( '+ Add New Category' ); ?></a></h4>
+		<a id="category-add-toggle" href="#category-add" class="taxonomy-add-new"><?php _e( '+ Add New Category' ); ?></a>
 		<p id="link-category-add" class="wp-hidden-child">
 			<label class="screen-reader-text" for="newcat"><?php _e( '+ Add New Category' ); ?></label>
 			<input type="text" name="newcat" id="newcat" class="form-required form-input-tip" value="<?php esc_attr_e( 'New category name' ); ?>" aria-required="true" />
@@ -992,7 +1013,7 @@ function xfn_check( $class, $value = '', $deprecated = '' ) {
 	global $link;
 
 	if ( !empty( $deprecated ) )
-		_deprecated_argument( __FUNCTION__, '0.0' ); // Never implemented
+		_deprecated_argument( __FUNCTION__, '0.0.0' ); // Never implemented
 
 	$link_rel = isset( $link->link_rel ) ? $link->link_rel : ''; // In PHP 5.3: $link_rel = $link->link_rel ?: '';
 	$rels = preg_split('/\s+/', $link_rel);
@@ -1170,6 +1191,8 @@ function link_advanced_meta_box($link) {
  * Display post thumbnail meta box.
  *
  * @since 2.9.0
+ *
+ * @param WP_Post $post A post object.
  */
 function post_thumbnail_meta_box( $post ) {
 	$thumbnail_id = get_post_meta( $post->ID, '_thumbnail_id', true );
@@ -1181,7 +1204,7 @@ function post_thumbnail_meta_box( $post ) {
  *
  * @since 3.9.0
  *
- * @param WP_Post $post
+ * @param WP_Post $post A post object.
  */
 function attachment_id3_data_meta_box( $post ) {
 	$meta = array();

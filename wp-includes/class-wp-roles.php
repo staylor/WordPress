@@ -79,7 +79,7 @@ class WP_Roles {
 	}
 
 	/**
-	 * Make private/protected methods readable for backwards compatibility.
+	 * Make private/protected methods readable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -133,12 +133,12 @@ class WP_Roles {
 	 * Reinitialize the object
 	 *
 	 * Recreates the role objects. This is typically called only by switch_to_blog()
-	 * after switching wpdb to a new blog ID.
+	 * after switching wpdb to a new site ID.
 	 *
 	 * @since 3.5.0
 	 * @access public
 	 *
-	 * @global wpdb $wpdb
+	 * @global wpdb $wpdb WordPress database abstraction object.
 	 */
 	public function reinit() {
 		// There is no need to reinit if using the wp_user_roles global.

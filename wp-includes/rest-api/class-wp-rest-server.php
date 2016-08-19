@@ -7,9 +7,6 @@
  * @since 4.4.0
  */
 
-/** Admin bootstrap */
-require_once( ABSPATH . 'wp-admin/includes/admin.php' );
-
 /**
  * Core class used to implement the WordPress REST API server.
  *
@@ -165,12 +162,19 @@ class WP_REST_Server {
 			$status = 500;
 		}
 
-		$data = array();
+		$errors = array();
 
 		foreach ( (array) $error->errors as $code => $messages ) {
 			foreach ( (array) $messages as $message ) {
-				$data[] = array( 'code' => $code, 'message' => $message, 'data' => $error->get_error_data( $code ) );
+				$errors[] = array( 'code' => $code, 'message' => $message, 'data' => $error->get_error_data( $code ) );
 			}
+		}
+
+		$data = $errors[0];
+		if ( count( $errors ) > 1 ) {
+			// Remove the primary error.
+			array_shift( $errors );
+			$data['additional_errors'] = $errors;
 		}
 
 		$response = new WP_REST_Response( $data, $status );
@@ -201,7 +205,7 @@ class WP_REST_Server {
 
 		$error = compact( 'code', 'message' );
 
-		return wp_json_encode( array( $error ) );
+		return wp_json_encode( $error );
 	}
 
 	/**
@@ -222,18 +226,38 @@ class WP_REST_Server {
 	public function serve_request( $path = null ) {
 		$content_type = isset( $_GET['_jsonp'] ) ? 'application/javascript' : 'application/json';
 		$this->send_header( 'Content-Type', $content_type . '; charset=' . get_option( 'blog_charset' ) );
+		$this->send_header( 'X-Robots-Tag', 'noindex' );
+
+		$api_root = get_rest_url();
+		if ( ! empty( $api_root ) ) {
+			$this->send_header( 'Link', '<' . esc_url_raw( $api_root ) . '>; rel="https://api.w.org/"' );
+		}
 
 		/*
 		 * Mitigate possible JSONP Flash attacks.
 		 *
-		 * http://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
+		 * https://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
 		 */
 		$this->send_header( 'X-Content-Type-Options', 'nosniff' );
 		$this->send_header( 'Access-Control-Expose-Headers', 'X-WP-Total, X-WP-TotalPages' );
 		$this->send_header( 'Access-Control-Allow-Headers', 'Authorization' );
 
 		/**
-		 * Filter whether the REST API is enabled.
+		 * Send nocache headers on authenticated requests.
+		 *
+		 * @since 4.4.0
+		 *
+		 * @param bool $rest_send_nocache_headers Whether to send no-cache headers.
+		 */
+		$send_no_cache_headers = apply_filters( 'rest_send_nocache_headers', is_user_logged_in() );
+		if ( $send_no_cache_headers ) {
+			foreach ( wp_get_nocache_headers() as $header => $header_value ) {
+				$this->send_header( $header, $header_value );
+			}
+		}
+
+		/**
+		 * Filters whether the REST API is enabled.
 		 *
 		 * @since 4.4.0
 		 *
@@ -242,7 +266,7 @@ class WP_REST_Server {
 		$enabled = apply_filters( 'rest_enabled', true );
 
 		/**
-		 * Filter whether jsonp is enabled.
+		 * Filters whether jsonp is enabled.
 		 *
 		 * @since 4.4.0
 		 *
@@ -262,14 +286,8 @@ class WP_REST_Server {
 				return false;
 			}
 
-			// Check for invalid characters (only alphanumeric allowed).
-			if ( is_string( $_GET['_jsonp'] ) ) {
-				$jsonp_callback = preg_replace( '/[^\w\.]/', '', wp_unslash( $_GET['_jsonp'] ), -1, $illegal_char_count );
-				if ( 0 !== $illegal_char_count ) {
-					$jsonp_callback = null;
-				}
-			}
-			if ( null === $jsonp_callback ) {
+			$jsonp_callback = $_GET['_jsonp'];
+			if ( ! wp_check_jsonp_callback( $jsonp_callback ) ) {
 				echo $this->json_error( 'rest_callback_invalid', __( 'The JSONP callback function is invalid.' ), 400 );
 				return false;
 			}
@@ -285,10 +303,10 @@ class WP_REST_Server {
 
 		$request = new WP_REST_Request( $_SERVER['REQUEST_METHOD'], $path );
 
-		$request->set_query_params( $_GET );
-		$request->set_body_params( $_POST );
+		$request->set_query_params( wp_unslash( $_GET ) );
+		$request->set_body_params( wp_unslash( $_POST ) );
 		$request->set_file_params( $_FILES );
-		$request->set_headers( $this->get_headers( $_SERVER ) );
+		$request->set_headers( $this->get_headers( wp_unslash( $_SERVER ) ) );
 		$request->set_body( $this->get_raw_data() );
 
 		/*
@@ -317,11 +335,12 @@ class WP_REST_Server {
 		}
 
 		/**
-		 * Filter the API response.
+		 * Filters the API response.
 		 *
 		 * Allows modification of the response before returning.
 		 *
 		 * @since 4.4.0
+		 * @since 4.5.0 Applied to embedded responses.
 		 *
 		 * @param WP_HTTP_Response $result  Result to send to the client. Usually a WP_REST_Response.
 		 * @param WP_REST_Server   $this    Server instance.
@@ -342,7 +361,7 @@ class WP_REST_Server {
 		$this->set_status( $code );
 
 		/**
-		 * Filter whether the request has already been served.
+		 * Filters whether the request has already been served.
 		 *
 		 * Allow sending the request manually - by returning true, the API result
 		 * will not be sent to the client.
@@ -376,7 +395,7 @@ class WP_REST_Server {
 
 			if ( $jsonp_callback ) {
 				// Prepend '/**/' to mitigate possible JSONP Flash attacks
-				// http://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
+				// https://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
 				echo '/**/' . $jsonp_callback . '(' . $result . ')';
 			} else {
 				echo $result;
@@ -402,7 +421,7 @@ class WP_REST_Server {
 	 */
 	public function response_to_data( $response, $embed ) {
 		$data  = $response->get_data();
-		$links = $this->get_response_links( $response );
+		$links = $this->get_compact_response_links( $response );
 
 		if ( ! empty( $links ) ) {
 			// Convert links to part of the data.
@@ -435,7 +454,6 @@ class WP_REST_Server {
 	 */
 	public static function get_response_links( $response ) {
 		$links = $response->get_links();
-
 		if ( empty( $links ) ) {
 			return array();
 		}
@@ -453,6 +471,59 @@ class WP_REST_Server {
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Retrieves the CURIEs (compact URIs) used for relations.
+	 *
+	 * Extracts the links from a response into a structured hash, suitable for
+	 * direct output.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 * @static
+	 *
+	 * @param WP_REST_Response $response Response to extract links from.
+	 * @return array Map of link relation to list of link hashes.
+	 */
+	public static function get_compact_response_links( $response ) {
+		$links = self::get_response_links( $response );
+
+		if ( empty( $links ) ) {
+			return array();
+		}
+
+		$curies = $response->get_curies();
+		$used_curies = array();
+
+		foreach ( $links as $rel => $items ) {
+
+			// Convert $rel URIs to their compact versions if they exist.
+			foreach ( $curies as $curie ) {
+				$href_prefix = substr( $curie['href'], 0, strpos( $curie['href'], '{rel}' ) );
+				if ( strpos( $rel, $href_prefix ) !== 0 ) {
+					continue;
+				}
+
+				// Relation now changes from '$uri' to '$curie:$relation'
+				$rel_regex = str_replace( '\{rel\}', '(.+)', preg_quote( $curie['href'], '!' ) );
+				preg_match( '!' . $rel_regex . '!', $rel, $matches );
+				if ( $matches ) {
+					$new_rel = $curie['name'] . ':' . $matches[1];
+					$used_curies[ $curie['name'] ] = $curie;
+					$links[ $new_rel ] = $items;
+					unset( $links[ $rel ] );
+					break;
+				}
+			}
+		}
+
+		// Push the curies onto the start of the links array.
+		if ( $used_curies ) {
+			$links['curies'] = array_values( $used_curies );
+		}
+
+		return $links;
 	}
 
 	/**
@@ -475,7 +546,6 @@ class WP_REST_Server {
 		}
 
 		$embedded = array();
-		$api_root = rest_url();
 
 		foreach ( $data['_links'] as $rel => $links ) {
 			// Ignore links to self, for obvious reasons.
@@ -487,41 +557,28 @@ class WP_REST_Server {
 
 			foreach ( $links as $item ) {
 				// Determine if the link is embeddable.
-				if ( empty( $item['embeddable'] ) || strpos( $item['href'], $api_root ) !== 0 ) {
+				if ( empty( $item['embeddable'] ) ) {
 					// Ensure we keep the same order.
 					$embeds[] = array();
 					continue;
 				}
 
 				// Run through our internal routing and serve.
-				$route = substr( $item['href'], strlen( untrailingslashit( $api_root ) ) );
-				$query_params = array();
-
-				// Parse out URL query parameters.
-				$parsed = parse_url( $route );
-				if ( empty( $parsed['path'] ) ) {
+				$request = WP_REST_Request::from_url( $item['href'] );
+				if ( ! $request ) {
 					$embeds[] = array();
 					continue;
 				}
 
-				if ( ! empty( $parsed['query'] ) ) {
-					parse_str( $parsed['query'], $query_params );
-
-					// Ensure magic quotes are stripped.
-					if ( get_magic_quotes_gpc() ) {
-						$query_params = stripslashes_deep( $query_params );
-					}
-				}
-
 				// Embedded resources get passed context=embed.
-				if ( empty( $query_params['context'] ) ) {
-					$query_params['context'] = 'embed';
+				if ( empty( $request['context'] ) ) {
+					$request['context'] = 'embed';
 				}
 
-				$request = new WP_REST_Request( 'GET', $parsed['path'] );
-
-				$request->set_query_params( $query_params );
 				$response = $this->dispatch( $request );
+
+				/** This filter is documented in wp-includes/rest-api/class-wp-rest-server.php */
+				$response = apply_filters( 'rest_post_dispatch', rest_ensure_response( $response ), $this, $request );
 
 				$embeds[] = $this->response_to_data( $response, false );
 			}
@@ -562,7 +619,7 @@ class WP_REST_Server {
 		);
 
 		/**
-		 * Filter the enveloped form of a response.
+		 * Filters the enveloped form of a response.
 		 *
 		 * @since 4.4.0
 		 *
@@ -642,7 +699,7 @@ class WP_REST_Server {
 	public function get_routes() {
 
 		/**
-		 * Filter the array of available endpoints.
+		 * Filters the array of available endpoints.
 		 *
 		 * @since 4.4.0
 		 *
@@ -744,7 +801,7 @@ class WP_REST_Server {
 	 */
 	public function dispatch( $request ) {
 		/**
-		 * Filter the pre-calculated result of a REST dispatch request.
+		 * Filters the pre-calculated result of a REST dispatch request.
 		 *
 		 * Allow hijacking the request before dispatching by returning a non-empty. The returned value
 		 * will be used to serve the request instead.
@@ -766,17 +823,22 @@ class WP_REST_Server {
 		$path   = $request->get_route();
 
 		foreach ( $this->get_routes() as $route => $handlers ) {
+			$match = preg_match( '@^' . $route . '$@i', $path, $args );
+
+			if ( ! $match ) {
+				continue;
+			}
+
 			foreach ( $handlers as $handler ) {
 				$callback  = $handler['callback'];
 				$response = null;
 
-				if ( empty( $handler['methods'][ $method ] ) ) {
-					continue;
+				// Fallback to GET method if no HEAD method is registered.
+				$checked_method = $method;
+				if ( 'HEAD' === $method && empty( $handler['methods']['HEAD'] ) ) {
+					$checked_method = 'GET';
 				}
-
-				$match = preg_match( '@^' . $route . '$@i', $path, $args );
-
-				if ( ! $match ) {
+				if ( empty( $handler['methods'][ $checked_method ] ) ) {
 					continue;
 				}
 
@@ -785,11 +847,11 @@ class WP_REST_Server {
 				}
 
 				if ( ! is_wp_error( $response ) ) {
+					// Remove the redundant preg_match argument.
+					unset( $args[0] );
 
 					$request->set_url_params( $args );
 					$request->set_attributes( $handler );
-
-					$request->sanitize_params();
 
 					$defaults = array();
 
@@ -805,6 +867,8 @@ class WP_REST_Server {
 					if ( is_wp_error( $check_required ) ) {
 						$response = $check_required;
 					}
+
+					$request->sanitize_params();
 				}
 
 				if ( ! is_wp_error( $response ) ) {
@@ -815,23 +879,26 @@ class WP_REST_Server {
 						if ( is_wp_error( $permission ) ) {
 							$response = $permission;
 						} else if ( false === $permission || null === $permission ) {
-							$response = new WP_Error( 'rest_forbidden', __( "You don't have permission to do this." ), array( 'status' => 403 ) );
+							$response = new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed to do that.' ), array( 'status' => 403 ) );
 						}
 					}
 				}
 
 				if ( ! is_wp_error( $response ) ) {
 					/**
-					 * Filter the REST dispatch request result.
+					 * Filters the REST dispatch request result.
 					 *
 					 * Allow plugins to override dispatching the request.
 					 *
 					 * @since 4.4.0
+					 * @since 4.5.0 Added `$route` and `$handler` parameters.
 					 *
 					 * @param bool            $dispatch_result Dispatch result, will be used if not empty.
 					 * @param WP_REST_Request $request         Request used to generate the response.
+					 * @param string          $route           Route matched for the request.
+					 * @param array           $handler         Route handler used for the request.
 					 */
-					$dispatch_result = apply_filters( 'rest_dispatch_request', null, $request );
+					$dispatch_result = apply_filters( 'rest_dispatch_request', null, $request, $route, $handler );
 
 					// Allow plugins to halt the request via this filter.
 					if ( null !== $dispatch_result ) {
@@ -904,6 +971,7 @@ class WP_REST_Server {
 			'name'           => get_option( 'blogname' ),
 			'description'    => get_option( 'blogdescription' ),
 			'url'            => get_option( 'siteurl' ),
+			'home'           => home_url(),
 			'namespaces'     => array_keys( $this->namespaces ),
 			'authentication' => array(),
 			'routes'         => $this->get_data_for_routes( $this->get_routes(), $request['context'] ),
@@ -914,7 +982,7 @@ class WP_REST_Server {
 		$response->add_link( 'help', 'http://v2.wp-api.org/' );
 
 		/**
-		 * Filter the API root index data.
+		 * Filters the API root index data.
 		 *
 		 * This contains the data describing the API. This includes information
 		 * about supported authentication schemes, supported namespaces, routes
@@ -957,7 +1025,7 @@ class WP_REST_Server {
 		$response->add_link( 'up', rest_url( '/' ) );
 
 		/**
-		 * Filter the namespace index data.
+		 * Filters the namespace index data.
 		 *
 		 * This typically is just the route data for the namespace, but you can
 		 * add any data you'd like here.
@@ -991,7 +1059,7 @@ class WP_REST_Server {
 			}
 
 			/**
-			 * Filter the REST endpoint data.
+			 * Filters the REST endpoint data.
 			 *
 			 * @since 4.4.0
 			 *
@@ -1001,7 +1069,7 @@ class WP_REST_Server {
 		}
 
 		/**
-		 * Filter the publicly-visible data for routes.
+		 * Filters the publicly-visible data for routes.
 		 *
 		 * This data is exposed on indexes and can be used by clients or
 		 * developers to investigate the site and find out how to use it. It
@@ -1066,6 +1134,12 @@ class WP_REST_Server {
 					);
 					if ( isset( $opts['default'] ) ) {
 						$arg_data['default'] = $opts['default'];
+					}
+					if ( isset( $opts['enum'] ) ) {
+						$arg_data['enum'] = $opts['enum'];
+					}
+					if ( isset( $opts['description'] ) ) {
+						$arg_data['description'] = $opts['description'];
 					}
 					$endpoint_data['args'][ $key ] = $arg_data;
 				}
@@ -1146,7 +1220,7 @@ class WP_REST_Server {
 	 *
 	 * @return string Raw request data.
 	 */
-	public function get_raw_data() {
+	public static function get_raw_data() {
 		global $HTTP_RAW_POST_DATA;
 
 		/*

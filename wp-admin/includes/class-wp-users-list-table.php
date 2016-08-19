@@ -1,12 +1,19 @@
 <?php
 /**
- * Users List Table class.
+ * List Table API: WP_Users_List_Table class
+ *
+ * @package WordPress
+ * @subpackage Administration
+ * @since 3.1.0
+ */
+
+/**
+ * Core class used to implement displaying users in a list table.
  *
  * @since 3.1.0
  * @access private
  *
- * @package WordPress
- * @subpackage List_Table
+ * @see WP_List_Table
  */
 class WP_Users_List_Table extends WP_List_Table {
 
@@ -118,7 +125,7 @@ class WP_Users_List_Table extends WP_List_Table {
 			$args['order'] = $_REQUEST['order'];
 
 		/**
-		 * Filter the query arguments used to retrieve users for the current users list table.
+		 * Filters the query arguments used to retrieve users for the current users list table.
 		 *
 		 * @since 4.4.0
 		 *
@@ -153,7 +160,7 @@ class WP_Users_List_Table extends WP_List_Table {
 	 * with this table.
 	 *
 	 * Provides a list of roles and user count for that role for easy
-	 * filtering of the user table.
+	 * Filtersing of the user table.
 	 *
 	 * @since  3.1.0
 	 * @access protected
@@ -268,8 +275,11 @@ class WP_Users_List_Table extends WP_List_Table {
 		 * in the Users list table.
 		 *
 		 * @since 3.5.0
+		 * @since 4.6.0 The `$which` parameter was added.
+		 *
+		 * @param string $which The location of the extra table nav markup: 'top' or 'bottom'.
 		 */
-		do_action( 'restrict_manage_users' );
+		do_action( 'restrict_manage_users', $which );
 		echo '</div>';
 	}
 
@@ -329,12 +339,8 @@ class WP_Users_List_Table extends WP_List_Table {
 	protected function get_sortable_columns() {
 		$c = array(
 			'username' => 'login',
-			'name'     => 'name',
 			'email'    => 'email',
 		);
-
-		if ( $this->is_site_users )
-			unset( $c['posts'] );
 
 		return $c;
 	}
@@ -374,8 +380,6 @@ class WP_Users_List_Table extends WP_List_Table {
 	 * @return string Output for a single row.
 	 */
 	public function single_row( $user_object, $style = '', $role = '', $numposts = 0 ) {
-		$wp_roles = wp_roles();
-
 		if ( ! ( $user_object instanceof WP_User ) ) {
 			$user_object = get_userdata( (int) $user_object );
 		}
@@ -410,7 +414,7 @@ class WP_Users_List_Table extends WP_List_Table {
 				$actions['remove'] = "<a class='submitdelete' href='" . wp_nonce_url( $url."action=remove&amp;user=$user_object->ID", 'bulk-users' ) . "'>" . __( 'Remove' ) . "</a>";
 
 			/**
-			 * Filter the action links displayed under each user in the Users list table.
+			 * Filters the action links displayed under each user in the Users list table.
 			 *
 			 * @since 2.8.0
 			 *
@@ -431,7 +435,6 @@ class WP_Users_List_Table extends WP_List_Table {
 		} else {
 			$edit = '<strong>' . $user_object->user_login . '</strong>';
 		}
-		$role_name = isset( $wp_roles->role_names[$role] ) ? translate_user_role( $wp_roles->role_names[$role] ) : __( 'None' );
 		$avatar = get_avatar( $user_object->ID, 32 );
 
 		// Comma-separated list of user roles.
@@ -487,7 +490,7 @@ class WP_Users_List_Table extends WP_List_Table {
 						break;
 					default:
 						/**
-						 * Filter the display output of custom columns in the Users list table.
+						 * Filters the display output of custom columns in the Users list table.
 						 *
 						 * @since 2.8.0
 						 *
@@ -531,7 +534,7 @@ class WP_Users_List_Table extends WP_List_Table {
 	 * @return array An array of user roles.
 	 */
 	protected function get_role_list( $user_object ) {
-		global $wp_roles;
+		$wp_roles = wp_roles();
 
 		$role_list = array();
 
@@ -546,7 +549,7 @@ class WP_Users_List_Table extends WP_List_Table {
 		}
 
 		/**
-		 * Filter the returned array of roles for a user.
+		 * Filters the returned array of roles for a user.
 		 *
 		 * @since 4.4.0
 		 *

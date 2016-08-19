@@ -10,7 +10,7 @@
 require_once( dirname( __FILE__ ) . '/admin.php' );
 
 if ( ! current_user_can( 'manage_options' ) )
-	wp_die( __( 'You do not have sufficient permissions to manage options for this site.' ) );
+	wp_die( __( 'Sorry, you are not allowed to manage options for this site.' ) );
 
 $title = __('Media Settings');
 $parent_file = 'options-general.php';
@@ -105,7 +105,10 @@ if ( get_option('upload_url_path') || ( get_option('upload_path') != 'wp-content
 <tr>
 <th scope="row"><label for="upload_path"><?php _e('Store uploads in this folder'); ?></label></th>
 <td><input name="upload_path" type="text" id="upload_path" value="<?php echo esc_attr(get_option('upload_path')); ?>" class="regular-text code" />
-<p class="description"><?php _e('Default is <code>wp-content/uploads</code>'); ?></p>
+<p class="description"><?php
+	/* translators: %s: wp-content/uploads */
+	printf( __( 'Default is %s' ), '<code>wp-content/uploads</code>' );
+?></p>
 </td>
 </tr>
 

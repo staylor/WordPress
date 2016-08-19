@@ -27,21 +27,16 @@ $charset_collate = $wpdb->get_charset_collate();
  *
  * @since 3.3.0
  *
- * @global wpdb $wpdb
+ * @global wpdb $wpdb WordPress database abstraction object.
  *
  * @param string $scope Optional. The tables for which to retrieve SQL. Can be all, global, ms_global, or blog tables. Defaults to all.
- * @param int $blog_id Optional. The blog ID for which to retrieve SQL. Default is the current blog ID.
+ * @param int $blog_id Optional. The site ID for which to retrieve SQL. Default is the current site ID.
  * @return string The SQL needed to create the requested tables.
  */
 function wp_get_db_schema( $scope = 'all', $blog_id = null ) {
 	global $wpdb;
 
-	$charset_collate = '';
-
-	if ( ! empty($wpdb->charset) )
-		$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
-	if ( ! empty($wpdb->collate) )
-		$charset_collate .= " COLLATE $wpdb->collate";
+	$charset_collate = $wpdb->get_charset_collate();
 
 	if ( $blog_id && $blog_id != $wpdb->blogid )
 		$old_blog_id = $wpdb->set_blog_id( $blog_id );
@@ -194,36 +189,38 @@ CREATE TABLE $wpdb->posts (
 	$users_single_table = "CREATE TABLE $wpdb->users (
   ID bigint(20) unsigned NOT NULL auto_increment,
   user_login varchar(60) NOT NULL default '',
-  user_pass varchar(64) NOT NULL default '',
+  user_pass varchar(255) NOT NULL default '',
   user_nicename varchar(50) NOT NULL default '',
   user_email varchar(100) NOT NULL default '',
   user_url varchar(100) NOT NULL default '',
   user_registered datetime NOT NULL default '0000-00-00 00:00:00',
-  user_activation_key varchar(60) NOT NULL default '',
+  user_activation_key varchar(255) NOT NULL default '',
   user_status int(11) NOT NULL default '0',
   display_name varchar(250) NOT NULL default '',
   PRIMARY KEY  (ID),
   KEY user_login_key (user_login),
-  KEY user_nicename (user_nicename)
+  KEY user_nicename (user_nicename),
+  KEY user_email (user_email)
 ) $charset_collate;\n";
 
 	// Multisite users table
 	$users_multi_table = "CREATE TABLE $wpdb->users (
   ID bigint(20) unsigned NOT NULL auto_increment,
   user_login varchar(60) NOT NULL default '',
-  user_pass varchar(64) NOT NULL default '',
+  user_pass varchar(255) NOT NULL default '',
   user_nicename varchar(50) NOT NULL default '',
   user_email varchar(100) NOT NULL default '',
   user_url varchar(100) NOT NULL default '',
   user_registered datetime NOT NULL default '0000-00-00 00:00:00',
-  user_activation_key varchar(60) NOT NULL default '',
+  user_activation_key varchar(255) NOT NULL default '',
   user_status int(11) NOT NULL default '0',
   display_name varchar(250) NOT NULL default '',
   spam tinyint(2) NOT NULL default '0',
   deleted tinyint(2) NOT NULL default '0',
   PRIMARY KEY  (ID),
   KEY user_login_key (user_login),
-  KEY user_nicename (user_nicename)
+  KEY user_nicename (user_nicename),
+  KEY user_email (user_email)
 ) $charset_collate;\n";
 
 	// Usermeta.
@@ -368,16 +365,23 @@ function populate_options() {
 		$uploads_use_yearmonth_folders = 1;
 	}
 
-	$template = WP_DEFAULT_THEME;
-	// If default theme is a child theme, we need to get its template
-	$theme = wp_get_theme( $template );
-	if ( ! $theme->errors() )
-		$template = $theme->get_template();
+	// If WP_DEFAULT_THEME doesn't exist, fall back to the latest core default theme.
+	$stylesheet = $template = WP_DEFAULT_THEME;
+	$theme = wp_get_theme( WP_DEFAULT_THEME );
+	if ( ! $theme->exists() ) {
+		$theme = WP_Theme::get_core_default_theme();
+	}
+
+	// If we can't find a core default theme, WP_DEFAULT_THEME is the best we can do.
+	if ( $theme ) {
+		$stylesheet = $theme->get_stylesheet();
+		$template   = $theme->get_template();
+	}
 
 	$timezone_string = '';
 	$gmt_offset = 0;
 	/* translators: default GMT offset or timezone string. Must be either a valid offset (-12 to 14)
-	   or a valid timezone string (America/New_York). See http://us3.php.net/manual/en/timezones.php
+	   or a valid timezone string (America/New_York). See https://secure.php.net/manual/en/timezones.php
 	   for all timezone strings supported by PHP.
 	*/
 	$offset_or_tz = _x( '0', 'default GMT offset or timezone string' );
@@ -390,7 +394,7 @@ function populate_options() {
 	'siteurl' => $guessurl,
 	'home' => $guessurl,
 	'blogname' => __('My Site'),
-	/* translators: blog tagline */
+	/* translators: site tagline */
 	'blogdescription' => __('Just another WordPress site'),
 	'users_can_register' => 0,
 	'admin_email' => 'you@example.com',
@@ -411,22 +415,22 @@ function populate_options() {
 	'default_ping_status' => 'open',
 	'default_pingback_flag' => 1,
 	'posts_per_page' => 10,
-	/* translators: default date format, see http://php.net/date */
+	/* translators: default date format, see https://secure.php.net/date */
 	'date_format' => __('F j, Y'),
-	/* translators: default time format, see http://php.net/date */
+	/* translators: default time format, see https://secure.php.net/date */
 	'time_format' => __('g:i a'),
-	/* translators: links last updated date format, see http://php.net/date */
+	/* translators: links last updated date format, see https://secure.php.net/date */
 	'links_updated_date_format' => __('F j, Y g:i a'),
 	'comment_moderation' => 0,
 	'moderation_notify' => 1,
 	'permalink_structure' => '',
-	'gzipcompression' => 0,
+	'rewrite_rules' => '',
+	'hack_file' => 0,
 	'blog_charset' => 'UTF-8',
 	'moderation_keys' => '',
 	'active_plugins' => array(),
 	'category_base' => '',
 	'ping_sites' => 'http://rpc.pingomatic.com/',
-	'advanced_edit' => 0,
 	'comment_max_links' => 2,
 	'gmt_offset' => $gmt_offset,
 
@@ -434,7 +438,7 @@ function populate_options() {
 	'default_email_category' => 1,
 	'recently_edited' => '',
 	'template' => $template,
-	'stylesheet' => WP_DEFAULT_THEME,
+	'stylesheet' => $stylesheet,
 	'comment_whitelist' => 1,
 	'blacklist_keys' => '',
 	'comment_registration' => 0,
@@ -482,6 +486,7 @@ function populate_options() {
 	'close_comments_days_old' => 14,
 	'thread_comments' => 1,
 	'thread_comments_depth' => 5,
+	'page_comments' => 0,
 	'comments_per_page' => 50,
 	'default_comments_page' => 'newest',
 	'comment_order' => 'asc',
@@ -506,6 +511,11 @@ function populate_options() {
 
 	// 4.3.0
 	'finished_splitting_shared_terms' => 1,
+	'site_icon' => 0,
+
+	// 4.4.0
+	'medium_large_size_w' => 768,
+	'medium_large_size_h' => 0,
 	);
 
 	// 3.3
@@ -516,7 +526,7 @@ function populate_options() {
 
 	// 3.0 multisite
 	if ( is_multisite() ) {
-		/* translators: blog tagline */
+		/* translators: site tagline */
 		$options[ 'blogdescription' ] = sprintf(__('Just another %s site'), get_current_site()->site_name );
 		$options[ 'permalink_structure' ] = '/%year%/%monthnum%/%day%/%postname%/';
 	}
@@ -566,7 +576,7 @@ function populate_options() {
 		'can_compress_scripts', 'page_uris', 'update_core', 'update_plugins', 'update_themes', 'doing_cron',
 		'random_seed', 'rss_excerpt_length', 'secret', 'use_linksupdate', 'default_comment_status_page',
 		'wporg_popular_tags', 'what_to_show', 'rss_language', 'language', 'enable_xmlrpc', 'enable_app',
-		'embed_autourls', 'default_post_edit_rows', 'page_comments',
+		'embed_autourls', 'default_post_edit_rows', 'gzipcompression', 'advanced_edit'
 	);
 	foreach ( $unusedoptions as $option )
 		delete_option($option);
@@ -844,13 +854,6 @@ function populate_roles_300() {
 		$role->add_cap( 'update_core' );
 		$role->add_cap( 'list_users' );
 		$role->add_cap( 'remove_users' );
-
-		/*
-		 * Never used, will be removed. create_users or promote_users
-		 * is the capability you're looking for.
-		 */
-		$role->add_cap( 'add_users' );
-
 		$role->add_cap( 'promote_users' );
 		$role->add_cap( 'edit_theme_options' );
 		$role->add_cap( 'delete_themes' );
@@ -883,7 +886,13 @@ endif;
  * @global int        $wp_db_version
  * @global WP_Rewrite $wp_rewrite
  *
- * @param int $network_id ID of network to populate.
+ * @param int    $network_id        ID of network to populate.
+ * @param string $domain            The domain name for the network (eg. "example.com").
+ * @param string $email             Email address for the network administrator.
+ * @param string $site_name         The name of the network.
+ * @param string $path              Optional. The path to append to the network's domain name. Default '/'.
+ * @param bool   $subdomain_install Optional. Whether the network is a subdomain install or a subdirectory install.
+ *                                  Default false, meaning the network is a subdirectory install.
  * @return bool|WP_Error True on success, or WP_Error on warning (with the install otherwise successful,
  *                       so the error code must be checked) or failure.
  */
@@ -900,21 +909,37 @@ function populate_network( $network_id = 1, $domain = '', $email = '', $site_nam
 	if ( $network_id == $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $wpdb->site WHERE id = %d", $network_id ) ) )
 		$errors->add( 'siteid_exists', __( 'The network already exists.' ) );
 
-	$site_user = get_user_by( 'email', $email );
 	if ( ! is_email( $email ) )
 		$errors->add( 'invalid_email', __( 'You must provide a valid email address.' ) );
 
 	if ( $errors->get_error_code() )
 		return $errors;
 
+	// If a user with the provided email does not exist, default to the current user as the new network admin.
+	$site_user = get_user_by( 'email', $email );
+	if ( false === $site_user ) {
+		$site_user = wp_get_current_user();
+	}
+
 	// Set up site tables.
 	$template = get_option( 'template' );
 	$stylesheet = get_option( 'stylesheet' );
 	$allowed_themes = array( $stylesheet => true );
-	if ( $template != $stylesheet )
+
+	if ( $template != $stylesheet ) {
 		$allowed_themes[ $template ] = true;
-	if ( WP_DEFAULT_THEME != $stylesheet && WP_DEFAULT_THEME != $template )
+	}
+
+	if ( WP_DEFAULT_THEME != $stylesheet && WP_DEFAULT_THEME != $template ) {
 		$allowed_themes[ WP_DEFAULT_THEME ] = true;
+	}
+
+	// If WP_DEFAULT_THEME doesn't exist, also whitelist the latest core default theme.
+	if ( ! wp_get_theme( WP_DEFAULT_THEME )->exists() ) {
+		if ( $core_default = WP_Theme::get_core_default_theme() ) {
+			$allowed_themes[ $core_default->get_stylesheet() ] = true;
+		}
+	}
 
 	if ( 1 == $network_id ) {
 		$wpdb->insert( $wpdb->site, array( 'domain' => $domain, 'path' => $path ) );
@@ -970,7 +995,7 @@ We hope you enjoy your new site. Thanks!
 
 	$sitemeta = array(
 		'site_name' => $site_name,
-		'admin_email' => $site_user->user_email,
+		'admin_email' => $email,
 		'admin_user_id' => $site_user->ID,
 		'registration' => 'none',
 		'upload_filetypes' => implode( ' ', $upload_filetypes ),
@@ -981,7 +1006,8 @@ We hope you enjoy your new site. Thanks!
 		'illegal_names' => array( 'www', 'web', 'root', 'admin', 'main', 'invite', 'administrator', 'files' ),
 		'wpmu_upgrade_site' => $wp_db_version,
 		'welcome_email' => $welcome_email,
-		'first_post' => __( 'Welcome to <a href="SITE_URL">SITE_NAME</a>. This is your first post. Edit or delete it, then start blogging!' ),
+		/* translators: %s: site link */
+		'first_post' => __( 'Welcome to %s. This is your first post. Edit or delete it, then start blogging!' ),
 		// @todo - network admins should have a method of editing the network siteurl (used for cookie hash)
 		'siteurl' => get_option( 'siteurl' ) . '/',
 		'add_new_users' => '0',
@@ -997,7 +1023,7 @@ We hope you enjoy your new site. Thanks!
 		$sitemeta['illegal_names'][] = 'blog';
 
 	/**
-	 * Filter meta for a network on creation.
+	 * Filters meta for a network on creation.
 	 *
 	 * @since 3.7.0
 	 *

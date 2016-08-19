@@ -23,8 +23,11 @@ class WP_Widget_Tag_Cloud extends WP_Widget {
 	 * @access public
 	 */
 	public function __construct() {
-		$widget_ops = array( 'description' => __( "A cloud of your most used tags.") );
-		parent::__construct('tag_cloud', __('Tag Cloud'), $widget_ops);
+		$widget_ops = array(
+			'description' => __( 'A cloud of your most used tags.' ),
+			'customize_selective_refresh' => true,
+		);
+		parent::__construct( 'tag_cloud', __( 'Tag Cloud' ), $widget_ops );
 	}
 
 	/**
@@ -51,7 +54,7 @@ class WP_Widget_Tag_Cloud extends WP_Widget {
 		}
 
 		/**
-		 * Filter the taxonomy used in the Tag Cloud widget.
+		 * Filters the taxonomy used in the Tag Cloud widget.
 		 *
 		 * @since 2.8.0
 		 * @since 3.0.0 Added taxonomy drop-down.
@@ -98,7 +101,7 @@ class WP_Widget_Tag_Cloud extends WP_Widget {
 	 */
 	public function update( $new_instance, $old_instance ) {
 		$instance = array();
-		$instance['title'] = sanitize_text_field( stripslashes( $new_instance['title'] ) );
+		$instance['title'] = sanitize_text_field( $new_instance['title'] );
 		$instance['taxonomy'] = stripslashes($new_instance['taxonomy']);
 		return $instance;
 	}
@@ -129,7 +132,7 @@ class WP_Widget_Tag_Cloud extends WP_Widget {
 
 		// No tag cloud supporting taxonomies found, display error message
 		case 0:
-			echo '<p>' . __( 'The tag cloud will not be displayed since their are no taxonomies that support the tag cloud widget.' ) . '</p>';
+			echo '<p>' . __( 'The tag cloud will not be displayed since there are no taxonomies that support the tag cloud widget.' ) . '</p>';
 			printf( $input, '' );
 			break;
 

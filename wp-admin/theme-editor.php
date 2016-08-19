@@ -15,7 +15,7 @@ if ( is_multisite() && ! is_network_admin() ) {
 }
 
 if ( !current_user_can('edit_themes') )
-	wp_die('<p>'.__('You do not have sufficient permissions to edit templates for this site.').'</p>');
+	wp_die('<p>'.__('Sorry, you are not allowed to edit templates for this site.').'</p>');
 
 $title = __("Edit Themes");
 $parent_file = 'themes.php';
@@ -25,7 +25,7 @@ get_current_screen()->add_help_tab( array(
 'title'		=> __('Overview'),
 'content'	=>
 	'<p>' . __('You can use the Theme Editor to edit the individual CSS and PHP files which make up your theme.') . '</p>
-	<p>' . __("Begin by choosing a theme to edit from the dropdown menu and clicking Select. A list then appears of the theme's template files. Clicking once on any file name causes the file to appear in the large Editor box.") . '</p>
+	<p>' . __( 'Begin by choosing a theme to edit from the dropdown menu and clicking the Select button. A list then appears of the theme&#8217;s template files. Clicking once on any file name causes the file to appear in the large Editor box.' ) . '</p>
 	<p>' . __('For PHP files, you can use the Documentation dropdown to select from functions recognized in that file. Look Up takes you to a web page with reference material about that particular function.') . '</p>
 	<p id="newcontent-description">' . __( 'In the editing area the Tab key enters a tab character. To move below this area by pressing Tab, press the Esc key followed by the Tab key. In some cases the Esc key will need to be pressed twice before the Tab key will allow you to continue.' ) . '</p>
 	<p>' . __('After typing in your edits, click Update File.') . '</p>
@@ -45,24 +45,55 @@ get_current_screen()->set_help_sidebar(
 
 wp_reset_vars( array( 'action', 'error', 'file', 'theme' ) );
 
-if ( $theme )
+if ( $theme ) {
 	$stylesheet = $theme;
-else
+} else {
 	$stylesheet = get_stylesheet();
+}
 
 $theme = wp_get_theme( $stylesheet );
 
-if ( ! $theme->exists() )
+if ( ! $theme->exists() ) {
 	wp_die( __( 'The requested theme does not exist.' ) );
+}
 
-if ( $theme->errors() && 'theme_no_stylesheet' == $theme->errors()->get_error_code() )
+if ( $theme->errors() && 'theme_no_stylesheet' == $theme->errors()->get_error_code() ) {
 	wp_die( __( 'The requested theme does not exist.' ) . ' ' . $theme->errors()->get_error_message() );
+}
 
-$allowed_files = $theme->get_files( 'php', 1 );
-$has_templates = ! empty( $allowed_files );
-$style_files = $theme->get_files( 'css' );
-$allowed_files['style.css'] = $style_files['style.css'];
-$allowed_files += $style_files;
+$allowed_files = $style_files = array();
+$has_templates = false;
+$default_types = array( 'php', 'css' );
+
+/**
+ * Filters the list of file types allowed for editing in the Theme editor.
+ *
+ * @since 4.4.0
+ *
+ * @param array    $default_types List of file types. Default types include 'php' and 'css'.
+ * @param WP_Theme $theme         The current Theme object.
+ */
+$file_types = apply_filters( 'wp_theme_editor_filetypes', $default_types, $theme );
+
+// Ensure that default types are still there.
+$file_types = array_unique( array_merge( $file_types, $default_types ) );
+
+foreach ( $file_types as $type ) {
+	switch ( $type ) {
+		case 'php':
+			$allowed_files += $theme->get_files( 'php', 1 );
+			$has_templates = ! empty( $allowed_files );
+			break;
+		case 'css':
+			$style_files = $theme->get_files( 'css' );
+			$allowed_files['style.css'] = $style_files['style.css'];
+			$allowed_files += $style_files;
+			break;
+		default:
+			$allowed_files += $theme->get_files( $type );
+			break;
+	}
+}
 
 if ( empty( $file ) ) {
 	$relative_file = 'style.css';
@@ -81,7 +112,7 @@ case 'update':
 	$newcontent = wp_unslash( $_POST['newcontent'] );
 	$location = 'theme-editor.php?file=' . urlencode( $relative_file ) . '&theme=' . urlencode( $stylesheet ) . '&scrollto=' . $scrollto;
 	if ( is_writeable( $file ) ) {
-		// is_writable() not always reliable, check return value. see comments @ http://uk.php.net/is_writable
+		// is_writable() not always reliable, check return value. see comments @ https://secure.php.net/is_writable
 		$f = fopen( $file, 'w+' );
 		if ( $f !== false ) {
 			fwrite( $f, $newcontent );
@@ -163,19 +194,41 @@ if ( $theme->errors() )
 	<div id="templateside">
 <?php
 if ( $allowed_files ) :
-	if ( $has_templates || $theme->parent() ) :
-?>
-	<h2><?php _e( 'Templates' ); ?></h2>
-	<?php if ( $theme->parent() ) : ?>
-	<p class="howto"><?php printf( __( 'This child theme inherits templates from a parent theme, %s.' ), '<a href="' . self_admin_url('theme-editor.php?theme=' . urlencode( $theme->get_template() ) ) . '">' . $theme->parent()->display('Name') . '</a>' ); ?></p>
-	<?php endif; ?>
-	<ul>
-<?php
-	endif;
+	$previous_file_type = '';
 
 	foreach ( $allowed_files as $filename => $absolute_filename ) :
-		if ( 'style.css' == $filename )
-			echo "\t</ul>\n\t<h2>" . _x( 'Styles', 'Theme stylesheets in theme editor' ) . "</h2>\n\t<ul>\n";
+		$file_type = substr( $filename, strrpos( $filename, '.' ) );
+
+		if ( $file_type !== $previous_file_type ) {
+			if ( '' !== $previous_file_type ) {
+				echo "\t</ul>\n";
+			}
+
+			switch ( $file_type ) {
+				case '.php':
+					if ( $has_templates || $theme->parent() ) :
+						echo "\t<h2>" . __( 'Templates' ) . "</h2>\n";
+						if ( $theme->parent() ) {
+							echo '<p class="howto">' . sprintf( __( 'This child theme inherits templates from a parent theme, %s.' ),
+								sprintf( '<a href="%s">%s</a>',
+									self_admin_url( 'theme-editor.php?theme=' . urlencode( $theme->get_template() ) ),
+									$theme->parent()->display( 'Name' )
+								)
+							) . "</p>\n";
+						}
+					endif;
+					break;
+				case '.css':
+					echo "\t<h2>" . _x( 'Styles', 'Theme stylesheets in theme editor' ) . "</h2>\n";
+					break;
+				default:
+					/* translators: %s: file extension */
+					echo "\t<h2>" . sprintf( __( '%s files' ), $file_type ) . "</h2>\n";
+					break;
+			}
+
+			echo "\t<ul>\n";
+		}
 
 		$file_description = get_file_description( $filename );
 		if ( $filename !== basename( $absolute_filename ) || $file_description !== $filename ) {
@@ -185,6 +238,8 @@ if ( $allowed_files ) :
 		if ( $absolute_filename === $file ) {
 			$file_description = '<span class="highlight">' . $file_description . '</span>';
 		}
+
+		$previous_file_type = $file_type;
 ?>
 		<li><a href="theme-editor.php?file=<?php echo urlencode( $filename ) ?>&amp;theme=<?php echo urlencode( $stylesheet ) ?>"><?php echo $file_description; ?></a></li>
 <?php

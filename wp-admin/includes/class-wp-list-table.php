@@ -1,65 +1,71 @@
 <?php
 /**
+ * Administration API: WP_List_Table class
+ *
+ * @package WordPress
+ * @subpackage List_Table
+ * @since 3.1.0
+ */
+
+/**
  * Base class for displaying a list of items in an ajaxified HTML table.
  *
  * @since 3.1.0
  * @access private
- *
- * @package WordPress
- * @subpackage List_Table
  */
 class WP_List_Table {
 
 	/**
-	 * The current list of items
+	 * The current list of items.
 	 *
 	 * @since 3.1.0
-	 * @var array
 	 * @access public
+	 * @var array
 	 */
 	public $items;
 
 	/**
-	 * Various information about the current table
+	 * Various information about the current table.
 	 *
 	 * @since 3.1.0
-	 * @var array
 	 * @access protected
+	 * @var array
 	 */
 	protected $_args;
 
 	/**
-	 * Various information needed for displaying the pagination
+	 * Various information needed for displaying the pagination.
 	 *
 	 * @since 3.1.0
+	 * @access protected
 	 * @var array
 	 */
 	protected $_pagination_args = array();
 
 	/**
-	 * The current screen
+	 * The current screen.
 	 *
 	 * @since 3.1.0
-	 * @var object
 	 * @access protected
+	 * @var object
 	 */
 	protected $screen;
 
 	/**
-	 * Cached bulk actions
+	 * Cached bulk actions.
 	 *
 	 * @since 3.1.0
-	 * @var array
 	 * @access private
+	 * @var array
 	 */
 	private $_actions;
 
 	/**
-	 * Cached pagination output
+	 * Cached pagination output.
 	 *
 	 * @since 3.1.0
-	 * @var string
 	 * @access private
+	 * @var string
 	 */
 	private $_pagination;
 
@@ -67,20 +73,34 @@ class WP_List_Table {
 	 * The view switcher modes.
 	 *
 	 * @since 4.1.0
-	 * @var array
 	 * @access protected
+	 * @var array
 	 */
 	protected $modes = array();
 
 	/**
-	 * Stores the value returned by ->get_column_info()
+	 * Stores the value returned by ->get_column_info().
 	 *
+	 * @since 4.1.0
+	 * @access protected
 	 * @var array
 	 */
 	protected $_column_headers;
 
+	/**
+	 * {@internal Missing Summary}
+	 *
+	 * @access protected
+	 * @var array
+	 */
 	protected $compat_fields = array( '_args', '_pagination_args', 'screen', '_actions', '_pagination' );
 
+	/**
+	 * {@internal Missing Summary}
+	 *
+	 * @access protected
+	 * @var array
+	 */
 	protected $compat_methods = array( 'set_pagination_args', 'get_views', 'get_bulk_actions', 'bulk_actions',
 		'row_actions', 'months_dropdown', 'view_switcher', 'comments_bubble', 'get_items_per_page', 'pagination',
 		'get_sortable_columns', 'get_column_info', 'get_table_classes', 'display_tablenav', 'extra_tablenav',
@@ -103,10 +123,10 @@ class WP_List_Table {
 	 *                            in the list table, e.g. 'posts'. Default empty.
 	 *     @type string $singular Singular label for an object being listed, e.g. 'post'.
 	 *                            Default empty
-	 *     @type bool   $ajax     Whether the list table supports AJAX. This includes loading
+	 *     @type bool   $ajax     Whether the list table supports Ajax. This includes loading
 	 *                            and sorting data, for example. If true, the class will call
-	 *                            the {@see _js_vars()} method in the footer to provide variables
-	 *                            to any scripts handling AJAX events. Default false.
+	 *                            the _js_vars() method in the footer to provide variables
+	 *                            to any scripts handling Ajax events. Default false.
 	 *     @type string $screen   String containing the hook name used to determine the current
 	 *                            screen. If left null, the current screen will be automatically set.
 	 *                            Default null.
@@ -146,7 +166,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Make private properties readable for backwards compatibility.
+	 * Make private properties readable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -161,7 +181,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Make private properties settable for backwards compatibility.
+	 * Make private properties settable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -177,7 +197,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Make private properties checkable for backwards compatibility.
+	 * Make private properties checkable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -192,7 +212,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Make private properties un-settable for backwards compatibility.
+	 * Make private properties un-settable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -206,7 +226,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Make private/protected methods readable for backwards compatibility.
+	 * Make private/protected methods readable for backward compatibility.
 	 *
 	 * @since 4.0.0
 	 * @access public
@@ -248,10 +268,10 @@ class WP_List_Table {
 	/**
 	 * An internal method that sets all the necessary pagination arguments
 	 *
-	 * @param array $args An associative array with information about the pagination
+	 * @since 3.1.0
 	 * @access protected
 	 *
-	 * @param array|string $args
+	 * @param array|string $args Array or string of arguments with information about the pagination.
 	 */
 	protected function set_pagination_args( $args ) {
 		$args = wp_parse_args( $args, array(
@@ -315,13 +335,13 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Display the search box.
+	 * Displays the search box.
 	 *
 	 * @since 3.1.0
 	 * @access public
 	 *
-	 * @param string $text The search button text
-	 * @param string $input_id The search input id
+	 * @param string $text     The 'submit' button label.
+	 * @param string $input_id ID attribute value for the search input field.
 	 */
 	public function search_box( $text, $input_id ) {
 		if ( empty( $_REQUEST['s'] ) && !$this->has_items() )
@@ -339,9 +359,9 @@ class WP_List_Table {
 			echo '<input type="hidden" name="detached" value="' . esc_attr( $_REQUEST['detached'] ) . '" />';
 ?>
 <p class="search-box">
-	<label class="screen-reader-text" for="<?php echo $input_id ?>"><?php echo $text; ?>:</label>
-	<input type="search" id="<?php echo $input_id ?>" name="s" value="<?php _admin_search_query(); ?>" />
-	<?php submit_button( $text, 'button', '', false, array('id' => 'search-submit') ); ?>
+	<label class="screen-reader-text" for="<?php echo esc_attr( $input_id ); ?>"><?php echo $text; ?>:</label>
+	<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s" value="<?php _admin_search_query(); ?>" />
+	<?php submit_button( $text, 'button', '', false, array( 'id' => 'search-submit' ) ); ?>
 </p>
 <?php
 	}
@@ -368,7 +388,7 @@ class WP_List_Table {
 	public function views() {
 		$views = $this->get_views();
 		/**
-		 * Filter the list of available list table views.
+		 * Filters the list of available list table views.
 		 *
 		 * The dynamic portion of the hook name, `$this->screen->id`, refers
 		 * to the ID of the current screen, usually a string.
@@ -412,13 +432,13 @@ class WP_List_Table {
 	 * @access protected
 	 *
 	 * @param string $which The location of the bulk actions: 'top' or 'bottom'.
-	 *                      This is designated as optional for backwards-compatibility.
+	 *                      This is designated as optional for backward compatibility.
 	 */
 	protected function bulk_actions( $which = '' ) {
 		if ( is_null( $this->_actions ) ) {
 			$no_new_actions = $this->_actions = $this->get_bulk_actions();
 			/**
-			 * Filter the list table Bulk Actions drop-down.
+			 * Filters the list table Bulk Actions drop-down.
 			 *
 			 * The dynamic portion of the hook name, `$this->screen->id`, refers
 			 * to the ID of the current screen, usually a string.
@@ -521,7 +541,7 @@ class WP_List_Table {
 		global $wpdb, $wp_locale;
 
 		/**
-		 * Filter whether to remove the 'Months' drop-down from the post list table.
+		 * Filters whether to remove the 'Months' drop-down from the post list table.
 		 *
 		 * @since 4.2.0
 		 *
@@ -548,7 +568,7 @@ class WP_List_Table {
 		", $post_type ) );
 
 		/**
-		 * Filter the 'Months' drop-down results.
+		 * Filters the 'Months' drop-down results.
 		 *
 		 * @since 3.7.0
 		 *
@@ -701,7 +721,7 @@ class WP_List_Table {
 			$per_page = $default;
 
 		/**
-		 * Filter the number of items to be displayed on each page of the list table.
+		 * Filters the number of items to be displayed on each page of the list table.
 		 *
 		 * The dynamic hook name, $option, refers to the `per_page` option depending
 		 * on the type of list table in use. Possible values include: 'edit_comments_per_page',
@@ -743,15 +763,16 @@ class WP_List_Table {
 		$output = '<span class="displaying-num">' . sprintf( _n( '%s item', '%s items', $total_items ), number_format_i18n( $total_items ) ) . '</span>';
 
 		$current = $this->get_pagenum();
+		$removable_query_args = wp_removable_query_args();
 
 		$current_url = set_url_scheme( 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] );
 
-		$current_url = remove_query_arg( array( 'hotkeys_highlight_last', 'hotkeys_highlight_first' ), $current_url );
+		$current_url = remove_query_arg( $removable_query_args, $current_url );
 
 		$page_links = array();
 
 		$total_pages_before = '<span class="paging-input">';
-		$total_pages_after  = '</span>';
+		$total_pages_after  = '</span></span>';
 
 		$disable_first = $disable_last = $disable_prev = $disable_next = false;
 
@@ -792,9 +813,9 @@ class WP_List_Table {
 
 		if ( 'bottom' === $which ) {
 			$html_current_page  = $current;
-			$total_pages_before = '<span class="screen-reader-text">' . __( 'Current Page' ) . '</span><span id="table-paging" class="paging-input">';
+			$total_pages_before = '<span class="screen-reader-text">' . __( 'Current Page' ) . '</span><span id="table-paging" class="paging-input"><span class="tablenav-paging-text">';
 		} else {
-			$html_current_page = sprintf( "%s<input class='current-page' id='current-page-selector' type='text' name='paged' value='%s' size='%d' aria-describedby='table-paging' />",
+			$html_current_page = sprintf( "%s<input class='current-page' id='current-page-selector' type='text' name='paged' value='%s' size='%d' aria-describedby='table-paging' /><span class='tablenav-paging-text'>",
 				'<label for="current-page-selector" class="screen-reader-text">' . __( 'Current Page' ) . '</label>',
 				$current,
 				strlen( $total_pages )
@@ -882,6 +903,10 @@ class WP_List_Table {
 		$columns = $this->get_columns();
 		$column = '';
 
+		if ( empty( $columns ) ) {
+			return $column;
+		}
+
 		// We need a primary defined so responsive views show something,
 		// so let's fall back to the first non-checkbox column.
 		foreach ( $columns as $col => $column_name ) {
@@ -917,7 +942,7 @@ class WP_List_Table {
 	 * @return string The name of the primary column.
 	 */
 	protected function get_primary_column_name() {
-		$columns = $this->get_columns();
+		$columns = get_column_headers( $this->screen );
 		$default = $this->get_default_primary_column_name();
 
 		// If the primary column doesn't exist fall back to the
@@ -927,7 +952,7 @@ class WP_List_Table {
 		}
 
 		/**
-		 * Filter the name of the primary column for the current list table.
+		 * Filters the name of the primary column for the current list table.
 		 *
 		 * @since 4.3.0
 		 *
@@ -969,7 +994,7 @@ class WP_List_Table {
 
 		$sortable_columns = $this->get_sortable_columns();
 		/**
-		 * Filter the list table sortable columns for a specific screen.
+		 * Filters the list table sortable columns for a specific screen.
 		 *
 		 * The dynamic portion of the hook name, `$this->screen->id`, refers
 		 * to the ID of the current screen, usually a string.
@@ -1013,38 +1038,6 @@ class WP_List_Table {
 	}
 
 	/**
-	 * If 'orderby' is set, return it.
-	 *
-	 * @access protected
-	 * @since 4.4.0
-	 *
-	 * @return string The value of 'orderby' or empty string.
-	 */
-	protected function get_orderby() {
-		if ( isset( $_GET['orderby'] ) ) {
-			return $_GET['orderby'];
-		}
-
-		return '';
-	}
-
-	/**
-	 * If 'order' is 'desc', return it. Else return 'asc'.
-	 *
-	 * @access protected
-	 * @since 4.4.0
-	 *
-	 * @return string 'desc' or 'asc'.
-	 */
-	protected function get_order() {
-		if ( isset( $_GET['order'] ) && 'desc' === $_GET['order'] ) {
-			return 'desc';
-		}
-
-		return 'asc';
-	}
-
-	/**
 	 * Print column headers, accounting for hidden and sortable columns.
 	 *
 	 * @since 3.1.0
@@ -1060,8 +1053,17 @@ class WP_List_Table {
 		$current_url = set_url_scheme( 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] );
 		$current_url = remove_query_arg( 'paged', $current_url );
 
-		$current_orderby = $this->get_orderby();
-		$current_order = $this->get_order();
+		if ( isset( $_GET['orderby'] ) ) {
+			$current_orderby = $_GET['orderby'];
+		} else {
+			$current_orderby = '';
+		}
+
+		if ( isset( $_GET['order'] ) && 'desc' === $_GET['order'] ) {
+			$current_order = 'desc';
+		} else {
+			$current_order = 'asc';
+		}
 
 		if ( ! empty( $columns['cb'] ) ) {
 			static $cb_counter = 1;
@@ -1152,7 +1154,7 @@ class WP_List_Table {
 	}
 
 	/**
-	 * Get a list of CSS classes for the list table table tag.
+	 * Get a list of CSS classes for the WP_List_Table table tag.
 	 *
 	 * @since 3.1.0
 	 * @access protected

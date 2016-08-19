@@ -41,6 +41,7 @@ class WP_Filesystem_Base {
 
 	/**
 	 * @access public
+	 * @var WP_Error
 	 */
 	public $errors = null;
 
@@ -138,7 +139,7 @@ class WP_Filesystem_Base {
 	 * @return string The location of the remote path.
 	 */
 	public function find_base_dir( $base = '.', $echo = false ) {
-		_deprecated_function(__FUNCTION__, '2.7', 'WP_Filesystem::abspath() or WP_Filesystem::wp_*_dir()' );
+		_deprecated_function(__FUNCTION__, '2.7.0', 'WP_Filesystem::abspath() or WP_Filesystem::wp_*_dir()' );
 		$this->verbose = $echo;
 		return $this->abspath();
 	}
@@ -160,7 +161,7 @@ class WP_Filesystem_Base {
 	 * @return string The location of the remote path.
 	 */
 	public function get_base_dir( $base = '.', $echo = false ) {
-		_deprecated_function(__FUNCTION__, '2.7', 'WP_Filesystem::abspath() or WP_Filesystem::wp_*_dir()' );
+		_deprecated_function(__FUNCTION__, '2.7.0', 'WP_Filesystem::abspath() or WP_Filesystem::wp_*_dir()' );
 		$this->verbose = $echo;
 		return $this->abspath();
 	}
@@ -251,8 +252,10 @@ class WP_Filesystem_Base {
 
 		$folder = untrailingslashit($folder);
 
-		if ( $this->verbose )
-			printf( "\n" . __('Looking for %1$s in %2$s') . "<br/>\n", $folder, $base );
+		if ( $this->verbose ) {
+			/* translators: 1: folder to locate, 2: folder to start searching from */
+			printf( "\n" . __( 'Looking for %1$s in %2$s' ) . "<br/>\n", $folder, $base );
+		}
 
 		$folder_parts = explode('/', $folder);
 		$folder_part_keys = array_keys( $folder_parts );
@@ -276,8 +279,10 @@ class WP_Filesystem_Base {
 
 				// Let's try that folder:
 				$newdir = trailingslashit(path_join($base, $key));
-				if ( $this->verbose )
-					printf( "\n" . __('Changing to %s') . "<br/>\n", $newdir );
+				if ( $this->verbose ) {
+					/* translators: %s: directory name */
+					printf( "\n" . __( 'Changing to %s' ) . "<br/>\n", $newdir );
+				}
 
 				// Only search for the remaining path tokens in the directory, not the full path again.
 				$newfolder = implode( '/', array_slice( $folder_parts, $index + 1 ) );
@@ -286,10 +291,13 @@ class WP_Filesystem_Base {
 			}
 		}
 
-		// Only check this as a last resort, to prevent locating the incorrect install. All above procedures will fail quickly if this is the right branch to take.
+		// Only check this as a last resort, to prevent locating the incorrect install.
+		// All above procedures will fail quickly if this is the right branch to take.
 		if (isset( $files[ $last_path ] ) ) {
-			if ( $this->verbose )
-				printf( "\n" . __('Found %s') . "<br/>\n",  $base . $last_path );
+			if ( $this->verbose ) {
+				/* translators: %s: directory name */
+				printf( "\n" . __( 'Found %s' ) . "<br/>\n",  $base . $last_path );
+			}
 			return trailingslashit($base . $last_path);
 		}
 
@@ -309,7 +317,7 @@ class WP_Filesystem_Base {
 	 *
 	 * From the PHP documentation page for fileperms().
 	 *
-	 * @link http://docs.php.net/fileperms
+	 * @link https://secure.php.net/manual/en/function.fileperms.php
 	 *
 	 * @access public
 	 * @since 2.5.0
@@ -377,7 +385,7 @@ class WP_Filesystem_Base {
 	 * Converts '-rw-r--r--' to 0644
 	 * From "info at rvgate dot nl"'s comment on the PHP documentation for chmod()
  	 *
-	 * @link http://docs.php.net/manual/en/function.chmod.php#49614
+	 * @link https://secure.php.net/manual/en/function.chmod.php#49614
 	 *
 	 * @access public
 	 * @since 2.5.0
@@ -698,6 +706,7 @@ class WP_Filesystem_Base {
 	 * @since 2.5.0
 	 * @abstract
 	 *
+	 * @param string $file Path to file.
 	 * @return bool Whether $file is writable.
 	 */
 	public function is_writable( $file ) {

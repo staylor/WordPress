@@ -17,7 +17,7 @@ if ( ! is_multisite() )
 	wp_die( __( 'Multisite support is not enabled.' ) );
 
 if ( ! current_user_can( 'manage_network_options' ) )
-	wp_die( __( 'You do not have permission to access this page.' ), 403 );
+	wp_die( __( 'Sorry, you are not allowed to access this page.' ), 403 );
 
 $title = __( 'Network Settings' );
 $parent_file = 'settings.php';
@@ -62,6 +62,7 @@ if ( $_POST ) {
 		'first_post', 'first_page', 'first_comment', 'first_comment_url', 'first_comment_author',
 		'welcome_email', 'welcome_user_email', 'fileupload_maxk', 'global_terms_enabled',
 		'illegal_names', 'limited_email_domains', 'banned_email_domains', 'WPLANG', 'admin_email',
+		'first_comment_email',
 	);
 
 	// Handle translation install.
@@ -93,7 +94,7 @@ if ( $_POST ) {
 include( ABSPATH . 'wp-admin/admin-header.php' );
 
 if ( isset( $_GET['updated'] ) ) {
-	?><div id="message" class="updated notice is-dismissible"><p><?php _e( 'Options saved.' ) ?></p></div><?php
+	?><div id="message" class="updated notice is-dismissible"><p><?php _e( 'Settings saved.' ) ?></p></div><?php
 }
 ?>
 
@@ -137,7 +138,13 @@ if ( isset( $_GET['updated'] ) ) {
 					<label><input name="registration" type="radio" id="registration3" value="blog"<?php checked( $reg, 'blog') ?> /> <?php _e( 'Logged in users may register new sites.' ); ?></label><br />
 					<label><input name="registration" type="radio" id="registration4" value="all"<?php checked( $reg, 'all') ?> /> <?php _e( 'Both sites and user accounts can be registered.' ); ?></label>
 					<?php if ( is_subdomain_install() ) {
-						echo '<p class="description">' . __( 'If registration is disabled, please set <code>NOBLOGREDIRECT</code> in <code>wp-config.php</code> to a URL you will redirect visitors to if they visit a non-existent site.' ) . '</p>';
+						echo '<p class="description">';
+						/* translators: 1: NOBLOGREDIRECT 2: wp-config.php */
+						printf( __( 'If registration is disabled, please set %1$s in %2$s to a URL you will redirect visitors to if they visit a non-existent site.' ),
+							'<code>NOBLOGREDIRECT</code>',
+							'<code>wp-config.php</code>'
+						);
+						echo '</p>';
 					} ?>
 					</fieldset>
 				</td>
@@ -252,9 +259,18 @@ if ( isset( $_GET['updated'] ) ) {
 			<tr>
 				<th scope="row"><label for="first_comment_author"><?php _e( 'First Comment Author' ) ?></label></th>
 				<td>
-					<input type="text" size="40" name="first_comment_author" id="first_comment_author" aria-describedby="first-comment-author-desc" value="<?php echo get_site_option('first_comment_author') ?>" />
+					<input type="text" size="40" name="first_comment_author" id="first_comment_author" aria-describedby="first-comment-author-desc" value="<?php echo esc_attr( get_site_option('first_comment_author') ); ?>" />
 					<p class="description" id="first-comment-author-desc">
 						<?php _e( 'The author of the first comment on a new site.' ) ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="first_comment_email"><?php _e( 'First Comment Email' ) ?></label></th>
+				<td>
+					<input type="text" size="40" name="first_comment_email" id="first_comment_email" aria-describedby="first-comment-email-desc" value="<?php echo esc_attr( get_site_option( 'first_comment_email' ) ); ?>" />
+					<p class="description" id="first-comment-email-desc">
+						<?php _e( 'The email address of the first comment author on a new site.' ) ?>
 					</p>
 				</td>
 			</tr>
@@ -273,7 +289,7 @@ if ( isset( $_GET['updated'] ) ) {
 			<tr>
 				<th scope="row"><?php _e( 'Site upload space' ) ?></th>
 				<td>
-					<label><input type="checkbox" id="upload_space_check_disabled" name="upload_space_check_disabled" value="0"<?php checked( get_site_option( 'upload_space_check_disabled' ), 0 ) ?>/> <?php printf( __( 'Limit total size of files uploaded to %s MB' ), '</label><label><input name="blog_upload_space" type="number" min="0" style="width: 100px" id="blog_upload_space" aria-describedby="blog-upload-space-desc" value="' . esc_attr( get_site_option('blog_upload_space', 100) ) . '" />' ); ?></label><br />
+					<label><input type="checkbox" id="upload_space_check_disabled" name="upload_space_check_disabled" value="0"<?php checked( (bool) get_site_option( 'upload_space_check_disabled' ), false ) ?>/> <?php printf( __( 'Limit total size of files uploaded to %s MB' ), '</label><label><input name="blog_upload_space" type="number" min="0" style="width: 100px" id="blog_upload_space" aria-describedby="blog-upload-space-desc" value="' . esc_attr( get_site_option('blog_upload_space', 100) ) . '" />' ); ?></label><br />
 					<p class="screen-reader-text" id="blog-upload-space-desc">
 						<?php _e( 'Size in megabytes' ) ?>
 					</p>
@@ -341,7 +357,7 @@ if ( isset( $_GET['updated'] ) ) {
 			<?php
 			$menu_perms = get_site_option( 'menu_items' );
 			/**
-			 * Filter available network-wide administration menu options.
+			 * Filters available network-wide administration menu options.
 			 *
 			 * Options returned to this filter are output as individual checkboxes that, when selected,
 			 * enable site administrator access to the specified administration menu in certain contexts.

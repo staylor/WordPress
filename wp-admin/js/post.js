@@ -73,7 +73,7 @@ WPSetThumbnailHTML = function(html){
 
 WPSetThumbnailID = function(id){
 	var field = $('input[value="_thumbnail_id"]', '#list-table');
-	if ( field.size() > 0 ) {
+	if ( field.length > 0 ) {
 		$('#meta\\[' + field.attr('id').match(/[0-9]+/) + '\\]\\[value\\]').text(id);
 	}
 };
@@ -131,7 +131,7 @@ $(document).on( 'heartbeat-send.refresh-lock', function( e, data ) {
 				}
 
 				if ( received.lock_error.avatar_src ) {
-					avatar = $('<img class="avatar avatar-64 photo" width="64" height="64" />').attr( 'src', received.lock_error.avatar_src.replace(/&amp;/g, '&') );
+					avatar = $( '<img class="avatar avatar-64 photo" width="64" height="64" alt="" />' ).attr( 'src', received.lock_error.avatar_src.replace( /&amp;/g, '&' ) );
 					wrap.find('div.post-locked-avatar').empty().append( avatar );
 				}
 
@@ -272,6 +272,14 @@ jQuery(document).ready( function($) {
 
 			if ( typeof commentReply !== 'undefined' ) {
 				/*
+				 * Warn the user they have an unsaved comment before submitting
+				 * the post data for update.
+				 */
+				if ( ! commentReply.discardCommentChanges() ) {
+					return false;
+				}
+
+				/*
 				 * Close the comment edit/reply form if open to stop the form
 				 * action from interfering with the post's form action.
 				 */
@@ -374,6 +382,10 @@ jQuery(document).ready( function($) {
 		$( '.autosave-message' ).text( postL10n.savingText );
 	}).on( 'after-autosave.edit-post', function( event, data ) {
 		$( '.autosave-message' ).text( data.message );
+
+		if ( $( document.body ).hasClass( 'post-new-php' ) ) {
+			$( '.submitbox .submitdelete' ).show();
+		}
 	});
 
 	$(window).on( 'beforeunload.edit-post', function() {
@@ -412,7 +424,7 @@ jQuery(document).ready( function($) {
 	if ( $('#tagsdiv-post_tag').length ) {
 		window.tagBox && window.tagBox.init();
 	} else {
-		$('#side-sortables, #normal-sortables, #advanced-sortables').children('div.postbox').each(function(){
+		$('.meta-box-sortables').children('div.postbox').each(function(){
 			if ( this.id.indexOf('tagsdiv-') === 0 ) {
 				window.tagBox && window.tagBox.init();
 				return false;
@@ -722,7 +734,7 @@ jQuery(document).ready( function($) {
 	// permalink
 	function editPermalink() {
 		var i, slug_value,
-			e, revert_e,
+			$el, revert_e,
 			c = 0,
 			real_slug = $('#post_name'),
 			revert_slug = real_slug.val(),
@@ -738,13 +750,13 @@ jQuery(document).ready( function($) {
 		full = full.html();
 
 		permalink.html( permalinkInner );
-		e = $('#editable-post-name');
-		revert_e = e.html();
+		$el = $( '#editable-post-name' );
+		revert_e = $el.html();
 
-		buttons.html('<button type="button" class="save button button-small">'+postL10n.ok+'</button> <a class="cancel" href="#">'+postL10n.cancel+'</a>');
-		buttons.children('.save').click( function( e ) {
-			var new_slug = e.children('input').val();
-			e.preventDefault();
+		buttons.html( '<button type="button" class="save button button-small">' + postL10n.ok + '</button> <button type="button" class="cancel button-link">' + postL10n.cancel + '</button>' );
+		buttons.children( '.save' ).click( function() {
+			var new_slug = $el.children( 'input' ).val();
+
 			if ( new_slug == $('#editable-post-name-full').text() ) {
 				buttons.children('.cancel').click();
 				return;
@@ -768,13 +780,13 @@ jQuery(document).ready( function($) {
 				permalink.html(permalinkOrig);
 				real_slug.val(new_slug);
 				$( '.edit-slug' ).focus();
+				wp.a11y.speak( postL10n.permalinkSaved );
 			});
 		});
 
-		buttons.children('.cancel').click( function( e ) {
-			e.preventDefault();
+		buttons.children( '.cancel' ).click( function() {
 			$('#view-post-btn').show();
-			e.html(revert_e);
+			$el.html(revert_e);
 			buttons.html(buttonsOrig);
 			permalink.html(permalinkOrig);
 			real_slug.val(revert_slug);
@@ -787,23 +799,22 @@ jQuery(document).ready( function($) {
 		}
 
 		slug_value = ( c > full.length / 4 ) ? '' : full;
-		e.html('<input type="text" id="new-post-slug" value="'+slug_value+'" autocomplete="off" />').children('input').keypress(function(e) {
-			var key = e.keyCode || 0;
-			// on enter, just save the new slug, don't save the post
-			if ( 13 == key ) {
-				buttons.children('.save').click();
-				return false;
+		$el.html( '<input type="text" id="new-post-slug" value="' + slug_value + '" autocomplete="off" />' ).children( 'input' ).keydown( function( e ) {
+			var key = e.which;
+			// On enter, just save the new slug, don't save the post.
+			if ( 13 === key ) {
+				e.preventDefault();
+				buttons.children( '.save' ).click();
 			}
-			if ( 27 == key ) {
-				buttons.children('.cancel').click();
-				return false;
+			if ( 27 === key ) {
+				buttons.children( '.cancel' ).click();
 			}
 		} ).keyup( function() {
-			real_slug.val(this.value);
+			real_slug.val( this.value );
 		}).focus();
 	}
 
-	$('#edit-slug-box').on( 'click', '.edit-slug', function() {
+	$( '#titlediv' ).on( 'click', '.edit-slug', function() {
 		editPermalink();
 	});
 

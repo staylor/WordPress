@@ -102,22 +102,29 @@ class WP_User {
 	private static $back_compat_keys;
 
 	/**
-	 * Constructor
+	 * @since 4.7.0
+	 * @access protected
+	 * @var wpdb
+	 */
+	protected $db;
+
+	/**
+	 * Constructor.
 	 *
-	 * Retrieves the userdata and passes it to {@link WP_User::init()}.
+	 * Retrieves the userdata and passes it to WP_User::init().
 	 *
 	 * @since 2.0.0
 	 * @access public
 	 *
-	 * @global wpdb $wpdb
-	 *
 	 * @param int|string|stdClass|WP_User $id User's ID, a WP_User object, or a user object from the DB.
 	 * @param string $name Optional. User's username
-	 * @param int $blog_id Optional Blog ID, defaults to current blog.
+	 * @param int $blog_id Optional Site ID, defaults to current site.
 	 */
 	public function __construct( $id = 0, $name = '', $blog_id = '' ) {
+		$this->db = $GLOBALS['wpdb'];
+
 		if ( ! isset( self::$back_compat_keys ) ) {
-			$prefix = $GLOBALS['wpdb']->prefix;
+			$prefix = $this->db->prefix;
 			self::$back_compat_keys = array(
 				'user_firstname' => 'first_name',
 				'user_lastname' => 'last_name',
@@ -157,8 +164,8 @@ class WP_User {
 	/**
 	 * Sets up object properties, including capabilities.
 	 *
-	 * @param object $data User DB row object
-	 * @param int $blog_id Optional. The blog id to initialize for
+	 * @param object $data    User DB row object.
+	 * @param int    $blog_id Optional. The site ID to initialize for.
 	 */
 	public function init( $data, $blog_id = '' ) {
 		$this->data = $data;
@@ -175,7 +182,7 @@ class WP_User {
 	 *
 	 * @static
 	 *
-	 * @global wpdb $wpdb
+	 * @global wpdb $wpdb WordPress database abstraction object.
 	 *
 	 * @param string $field The field to query against: 'id', 'ID', 'slug', 'email' or 'login'.
 	 * @param string|int $value The field value
@@ -232,17 +239,17 @@ class WP_User {
 		}
 
 		if ( !$user = $wpdb->get_row( $wpdb->prepare(
-			"SELECT * FROM $wpdb->users WHERE $db_field = %s", $value
-		) ) )
+			"SELECT * FROM {$wpdb->users} WHERE $db_field = %s", $value
+		) ) ) {
 			return false;
-
+		}
 		update_user_caches( $user );
 
 		return $user;
 	}
 
 	/**
-	 * Makes private/protected methods readable for backwards compatibility.
+	 * Makes private/protected methods readable for backward compatibility.
 	 *
 	 * @since 4.3.0
 	 * @access public
@@ -269,7 +276,13 @@ class WP_User {
 	 */
 	public function __isset( $key ) {
 		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			_deprecated_argument( 'WP_User->id', '2.1.0',
+				sprintf(
+					/* translators: %s: WP_User->ID */
+					__( 'Use %s instead.' ),
+					'<code>WP_User->ID</code>'
+				)
+			);
 			$key = 'ID';
 		}
 
@@ -293,7 +306,13 @@ class WP_User {
 	 */
 	public function __get( $key ) {
 		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			_deprecated_argument( 'WP_User->id', '2.1.0',
+				sprintf(
+					/* translators: %s: WP_User->ID */
+					__( 'Use %s instead.' ),
+					'<code>WP_User->ID</code>'
+				)
+			);
 			return $this->ID;
 		}
 
@@ -326,7 +345,13 @@ class WP_User {
 	 */
 	public function __set( $key, $value ) {
 		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			_deprecated_argument( 'WP_User->id', '2.1.0',
+				sprintf(
+					/* translators: %s: WP_User->ID */
+					__( 'Use %s instead.' ),
+					'<code>WP_User->ID</code>'
+				)
+			);
 			$this->ID = $value;
 			return;
 		}
@@ -344,7 +369,13 @@ class WP_User {
 	 */
 	public function __unset( $key ) {
 		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			_deprecated_argument( 'WP_User->id', '2.1.0',
+				sprintf(
+					/* translators: %s: WP_User->ID */
+					__( 'Use %s instead.' ),
+					'<code>WP_User->ID</code>'
+				)
+			);
 		}
 
 		if ( isset( $this->data->$key ) ) {
@@ -418,18 +449,14 @@ class WP_User {
 	 * @access protected
 	 * @since 2.1.0
 	 *
-	 * @global wpdb $wpdb
-	 *
 	 * @param string $cap_key Optional capability key
 	 */
 	protected function _init_caps( $cap_key = '' ) {
-		global $wpdb;
-
-		if ( empty($cap_key) )
-			$this->cap_key = $wpdb->get_blog_prefix() . 'capabilities';
-		else
+		if ( empty( $cap_key ) ) {
+			$this->cap_key = $this->db->get_blog_prefix() . 'capabilities';
+		} else {
 			$this->cap_key = $cap_key;
-
+		}
 		$this->caps = get_user_meta( $this->ID, $this->cap_key, true );
 
 		if ( ! is_array( $this->caps ) )
@@ -607,13 +634,10 @@ class WP_User {
 	 *
 	 * @since 2.0.0
 	 * @access public
-	 *
-	 * @global wpdb $wpdb
 	 */
 	public function update_user_level_from_caps() {
-		global $wpdb;
 		$this->user_level = array_reduce( array_keys( $this->allcaps ), array( $this, 'level_reduction' ), 0 );
-		update_user_meta( $this->ID, $wpdb->get_blog_prefix() . 'user_level', $this->user_level );
+		update_user_meta( $this->ID, $this->db->get_blog_prefix() . 'user_level', $this->user_level );
 	}
 
 	/**
@@ -655,14 +679,11 @@ class WP_User {
 	 *
 	 * @since 2.1.0
 	 * @access public
-	 *
-	 * @global wpdb $wpdb
 	 */
 	public function remove_all_caps() {
-		global $wpdb;
 		$this->caps = array();
 		delete_user_meta( $this->ID, $this->cap_key );
-		delete_user_meta( $this->ID, $wpdb->get_blog_prefix() . 'user_level' );
+		delete_user_meta( $this->ID, $this->db->get_blog_prefix() . 'user_level' );
 		$this->get_role_caps();
 	}
 
@@ -677,18 +698,18 @@ class WP_User {
 	 *
 	 * @see map_meta_cap()
 	 *
-	 * @param string $cap       Capability name.
-	 * @param int    $object_id Optional. ID of the specific object to check against if `$cap` is a "meta" cap.
-	 *                          "Meta" capabilities, e.g. 'edit_post', 'edit_user', etc., are capabilities used
-	 *                          by map_meta_cap() to map to other "primitive" capabilities, e.g. 'edit_posts',
-	 *                          'edit_others_posts', etc. The parameter is accessed via func_get_args() and passed
-	 *                          to map_meta_cap().
+	 * @param string $cap           Capability name.
+	 * @param int    $object_id,... Optional. ID of the specific object to check against if `$cap` is a "meta" cap.
+	 *                              "Meta" capabilities, e.g. 'edit_post', 'edit_user', etc., are capabilities used
+	 *                              by map_meta_cap() to map to other "primitive" capabilities, e.g. 'edit_posts',
+	 *                              'edit_others_posts', etc. The parameter is accessed via func_get_args() and passed
+	 *                              to map_meta_cap().
 	 * @return bool Whether the current user has the given capability. If `$cap` is a meta cap and `$object_id` is
 	 *              passed, whether the current user has the given meta capability for the given object.
 	 */
 	public function has_cap( $cap ) {
 		if ( is_numeric( $cap ) ) {
-			_deprecated_argument( __FUNCTION__, '2.0', __('Usage of user levels by plugins and themes is deprecated. Use roles and capabilities instead.') );
+			_deprecated_argument( __FUNCTION__, '2.0.0', __('Usage of user levels by plugins and themes is deprecated. Use roles and capabilities instead.') );
 			$cap = $this->translate_level_to_cap( $cap );
 		}
 
@@ -714,9 +735,12 @@ class WP_User {
 		 * @param array   $args    Optional parameters passed to has_cap(), typically object ID.
 		 * @param WP_User $user    The user object.
 		 */
-		// Must have ALL requested caps
 		$capabilities = apply_filters( 'user_has_cap', $this->allcaps, $caps, $args, $this );
-		$capabilities['exist'] = true; // Everyone is allowed to exist
+
+		// Everyone is allowed to exist.
+		$capabilities['exist'] = true;
+
+		// Must have ALL requested caps.
 		foreach ( (array) $caps as $cap ) {
 			if ( empty( $capabilities[ $cap ] ) )
 				return false;
@@ -741,20 +765,18 @@ class WP_User {
 	}
 
 	/**
-	 * Set the blog to operate on. Defaults to the current blog.
+	 * Set the site to operate on. Defaults to the current site.
 	 *
 	 * @since 3.0.0
 	 *
-	 * @global wpdb $wpdb
-	 *
-	 * @param int $blog_id Optional Blog ID, defaults to current blog.
+	 * @param int $blog_id Optional. Site ID, defaults to current site.
 	 */
 	public function for_blog( $blog_id = '' ) {
-		global $wpdb;
-		if ( ! empty( $blog_id ) )
-			$cap_key = $wpdb->get_blog_prefix( $blog_id ) . 'capabilities';
-		else
+		if ( ! empty( $blog_id ) ) {
+			$cap_key = $this->db->get_blog_prefix( $blog_id ) . 'capabilities';
+		} else {
 			$cap_key = '';
+		}
 		$this->_init_caps( $cap_key );
 	}
 }

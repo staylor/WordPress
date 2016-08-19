@@ -17,6 +17,9 @@
  * ability to interact with any network of sites is required.
  *
  * @since 4.4.0
+ *
+ * @property int $id
+ * @property int $site_id
  */
 class WP_Network {
 
@@ -24,10 +27,13 @@ class WP_Network {
 	 * Network ID.
 	 *
 	 * @since 4.4.0
-	 * @access public
+	 * @since 4.6.0 Converted from public to private to explicitly enable more intuitive
+	 *              access via magic methods. As part of the access change, the type was
+	 *              also changed from `string` to `int`.
+	 * @access private
 	 * @var int
 	 */
-	public $id;
+	private $id;
 
 	/**
 	 * Domain of the network.
@@ -53,18 +59,20 @@ class WP_Network {
 	 * Named "blog" vs. "site" for legacy reasons. A main site is mapped to
 	 * the network when the network is created.
 	 *
+	 * A numeric string, for compatibility reasons.
+	 *
 	 * @since 4.4.0
-	 * @access public
-	 * @var int
+	 * @access private
+	 * @var string
 	 */
-	public $blog_id = 0;
+	private $blog_id = '0';
 
 	/**
 	 * Domain used to set cookies for this network.
 	 *
 	 * @since 4.4.0
 	 * @access public
-	 * @var int
+	 * @var string
 	 */
 	public $cookie_domain = '';
 
@@ -134,6 +142,77 @@ class WP_Network {
 	}
 
 	/**
+	 * Getter.
+	 *
+	 * Allows current multisite naming conventions when getting properties.
+	 *
+	 * @since 4.6.0
+	 * @access public
+	 *
+	 * @param string $key Property to get.
+	 * @return mixed Value of the property. Null if not available.
+	 */
+	public function __get( $key ) {
+		switch ( $key ) {
+			case 'id';
+				return (int) $this->id;
+			case 'blog_id':
+				return $this->blog_id;
+			case 'site_id':
+				return (int) $this->blog_id;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Isset-er.
+	 *
+	 * Allows current multisite naming conventions when checking for properties.
+	 *
+	 * @since 4.6.0
+	 * @access public
+	 *
+	 * @param string $key Property to check if set.
+	 * @return bool Whether the property is set.
+	 */
+	public function __isset( $key ) {
+		switch ( $key ) {
+			case 'id':
+			case 'blog_id':
+			case 'site_id':
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Setter.
+	 *
+	 * Allows current multisite naming conventions while setting properties.
+	 *
+	 * @since 4.6.0
+	 * @access public
+	 *
+	 * @param string $key   Property to set.
+	 * @param mixed  $value Value to assign to the property.
+	 */
+	public function __set( $key, $value ) {
+		switch ( $key ) {
+			case 'id':
+				$this->id = (int) $value;
+				break;
+			case 'blog_id':
+			case 'site_id':
+				$this->blog_id = (string) $value;
+				break;
+			default:
+				$this->$key = $value;
+		}
+	}
+
+	/**
 	 * Set the site name assigned to the network if one has not been populated.
 	 *
 	 * @since 4.4.0
@@ -145,7 +224,7 @@ class WP_Network {
 		}
 
 		$default = ucfirst( $this->domain );
-		$this->site_name = get_network_option( 'site_name', $default, $this->id );
+		$this->site_name = get_network_option( $this->id, 'site_name', $default );
 	}
 
 	/**
@@ -169,7 +248,14 @@ class WP_Network {
 	}
 
 	/**
-	 * Retrieve a network by its domain and path.
+	 * Retrieve the closest matching network for a domain and path.
+	 *
+	 * This will not necessarily return an exact match for a domain and path. Instead, it
+	 * breaks the domain and path into pieces that are then used to match the closest
+	 * possibility from a query.
+	 *
+	 * The intent of this method is to match a network during bootstrap for a
+	 * requested site address.
 	 *
 	 * @since 4.4.0
 	 * @access public
@@ -209,17 +295,17 @@ class WP_Network {
 		if ( wp_using_ext_object_cache() ) {
 			$using_paths = wp_cache_get( 'networks_have_paths', 'site-options' );
 			if ( false === $using_paths ) {
-				$using_paths = $wpdb->get_var( "SELECT id FROM {$wpdb->site} WHERE path <> '/' LIMIT 1" );
-				wp_cache_add( 'networks_have_paths', (int) $using_paths, 'site-options'  );
+				$using_paths = (int) $wpdb->get_var( "SELECT id FROM {$wpdb->site} WHERE path <> '/' LIMIT 1" );
+				wp_cache_add( 'networks_have_paths', $using_paths, 'site-options'  );
 			}
 		}
 
 		$paths = array();
-		if ( true === $using_paths ) {
+		if ( $using_paths ) {
 			$path_segments = array_filter( explode( '/', trim( $path, '/' ) ) );
 
 			/**
-			 * Filter the number of path segments to consider when searching for a site.
+			 * Filters the number of path segments to consider when searching for a site.
 			 *
 			 * @since 3.9.0
 			 *
@@ -272,7 +358,7 @@ class WP_Network {
 
 		$search_domains = "'" . implode( "', '", $wpdb->_escape( $domains ) ) . "'";
 
-		if ( false === $using_paths ) {
+		if ( ! $using_paths ) {
 			$network = $wpdb->get_row( "
 				SELECT * FROM {$wpdb->site}
 				WHERE domain IN ({$search_domains})
