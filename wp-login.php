@@ -285,14 +285,9 @@ function wp_login_viewport_meta() {
 /**
  * Handles sending password retrieval email to user.
  *
- * @global wpdb         $wpdb      WordPress database abstraction object.
- * @global PasswordHash $wp_hasher Portable PHP password hashing framework.
- *
  * @return bool|WP_Error True: when finish. WP_Error on error
  */
 function retrieve_password() {
-	global $wpdb, $wp_hasher;
-
 	$errors = new WP_Error();
 
 	if ( empty( $_POST['user_login'] ) ) {
@@ -431,7 +426,7 @@ do_action( 'login_init' );
  *
  * @since 2.8.0
  */
-do_action( 'login_form_' . $action );
+do_action( "login_form_{$action}" );
 
 $http_post = ('POST' == $_SERVER['REQUEST_METHOD']);
 $interim_login = isset($_REQUEST['interim-login']);
